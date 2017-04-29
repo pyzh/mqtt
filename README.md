@@ -1,5 +1,5 @@
-N2O 4.5: N2O for using over MQTT
-================================
+N2O: Protocol Server for MQTT
+=============================
 
 Features
 --------
