@@ -1,0 +1,9 @@
+language: erlang
+otp_release:
+  - 19.3
+notifications:
+  email: 
+    - maxim@synrc.com
+    - doxtop@synrc.com
+  irc: "chat.freenode.net#n2o"
+script: "curl -fsSL https://raw.github.com/synrc/mad/master/mad > mad && chmod +x mad && ./mad dep com"
