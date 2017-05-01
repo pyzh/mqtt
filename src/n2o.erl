@@ -31,7 +31,6 @@ tables()   -> [ cookies, caching ].
 opt()      -> [ set, named_table, { keypos, 1 }, public ].
 stop(_)    -> unload(), ok.
 start(_,_) -> load([]), X = supervisor:start_link({local,n2o},n2o, []),
-              application:set_env(n2o,session,n2o_session),
               n2o_async:start(#handler{module=?MODULE,class=system,group=n2o,state=[],name="timer"}),
               X.
 init([])   -> [ ets:new(T,opt()) || T <- tables() ],
