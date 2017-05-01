@@ -62,7 +62,7 @@ on_client_subscribe(ClientId, Username, TopicTable, _Env) ->
     case n2o_proto:info({init,<<>>},[],?CTX) of
          {reply, {binary, M}, _, #cx{}} ->
              Msg = emqttd_message:make(Name, 0, Name, M),
-             io:format("N2O ~p~n Message: ~p Pid: ~p~n",[ClientId, binary_to_term(M), self()]),
+%             io:format("N2O ~p~n Message: ~p Pid: ~p~n",[ClientId, binary_to_term(M), self()]),
              self() ! {deliver, Msg};
          _ -> skip end,
     {ok, TopicTable}.
@@ -89,7 +89,7 @@ on_message_publish(Message = #mqtt_message{topic = <<"$SYS/", _/binary>>}, _Env)
     {ok, Message};
 
 on_message_publish(Message = #mqtt_message{topic = _Topic, from = {_ClientId,_}, payload = Payload}, _Env) ->
-    io:format("publish ~p~n", [Payload]),
+    io:format("publish ~p bytes~n", [size(Payload)]),
     {ok, Message}.
 
 on_message_delivered(ClientId, _Username, Message = #mqtt_message{topic = _Topic, payload = Payload}, _Env) ->
@@ -99,7 +99,7 @@ on_message_delivered(ClientId, _Username, Message = #mqtt_message{topic = _Topic
          {reply, {binary, M}, _R, #cx{}} ->
               case binary_to_term(M) of
                    {io,X,_} -> Msg = emqttd_message:make(Name, 0, Name, M),
-                               io:format("IO ~p~n Message: ~p Pid: ~p~n",[ClientId, X, self()]),
+%                               io:format("IO ~p~n Message: ~p Pid: ~p~n",[ClientId, X, self()]),
                                self() ! {deliver, Msg},
                                {ok, Message};
                           _ -> {ok, Message} end;

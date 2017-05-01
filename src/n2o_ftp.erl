@@ -54,8 +54,7 @@ info(#ftp{status= <<"recv">>}=FTP,Req,State) -> {reply,n2o:format(FTP),Req,State
 
 info(#ftp{status= <<"relay">>}=FTP,Req,State) -> {reply,n2o:format(FTP),Req, State};
 
-info(Message,Req,State) -> io:format("Info Unknown message: ~p",[Message]),
-    {unknown,Message,Req,State}.
+info(Message,Req,State) -> {unknown,Message,Req,State}.
 
 % n2o Handlers
 
