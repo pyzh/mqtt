@@ -31,6 +31,7 @@ tables()   -> [ cookies, caching ].
 opt()      -> [ set, named_table, { keypos, 1 }, public ].
 stop(_)    -> unload(), ok.
 start(_,_) -> load([]), X = supervisor:start_link({local,n2o},n2o, []),
+              application:set_env(n2o,session,n2o_session),
               n2o_async:start(#handler{module=?MODULE,class=system,group=n2o,state=[],name="timer"}),
               X.
 init([])   -> [ ets:new(T,opt()) || T <- tables() ],
@@ -50,14 +51,15 @@ select(Topic) -> {SelectModule,Function} = application:get_env(n2o,select,{n2o,s
            [A] -> ["index",A];
             [] -> ["index","lobby"] end, SelectModule:Function(Module,Room).
 
-select(Module,_Room) -> list_to_atom(Module).
+select(Module,Room) -> [list_to_atom(Module),Room].
 
 on_client_subscribe(ClientId, Username, TopicTable, _Env) ->
     io:format("client(~s/~s) will subscribe: ~p~n", [Username, ClientId, TopicTable]),
     Name = binary_to_list(iolist_to_binary(ClientId)),
     BinTopic = element(1,hd(TopicTable)),
     put(topic,BinTopic),
-    n2o:context(#cx{module=select(BinTopic),formatter=bert,params=[]}),
+    [Module,Room] = select(BinTopic),
+    n2o:context(#cx{module=Module,formatter=bert,params=[]}),
     case n2o_proto:info({init,<<>>},[],?CTX) of
          {reply, {binary, M}, _, #cx{}} ->
              Msg = emqttd_message:make(Name, 0, Name, M),
@@ -245,7 +247,6 @@ user(User) -> session(<<"user">>,User).
 session(Key) -> ?SESSION:get_value(Key,undefined).
 session(Key, Value) -> ?SESSION:set_value(Key, Value).
 
-remove_value(Key) -> erlang:put(Key,undefined).
 set_value(Key, Value) -> erlang:put(Key,Value).
 get_value(Key, DefaultValue) -> case erlang:get(Key) of
                                      undefined -> DefaultValue;
