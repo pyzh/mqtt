@@ -12,15 +12,15 @@
 
 % Callbacks
 
-filename(#ftp{sid=Sid,filename=FileName}) -> filename:join(n2o:to_list(Sid),FileName).
+filename(#ftp{sid=Sid,filename=FileName}) -> filename:join(nitro:to_list(Sid),FileName).
 
 % File Transfer Protocol
 
 info(#ftp{status={event,_}}=FTP, Req, State) ->
-%    io:format("Event Message: ~p",[FTP#ftp{data= <<>>}]),
+    io:format("Event Message: ~p",[FTP#ftp{data= <<>>}]),
     Module=State#cx.module,
     Reply=try Module:event(FTP)
-          catch E:R -> Error=n2o:stack(E,R), n2o:error(?MODULE,"Catch: ~p:~p~n~p",Error), Error end,
+          catch E:R -> Error=n2o:stack(E,R), io:format("Catch: ~p:~p~n~p",Error), Error end,
     {reply,n2o:format({io,n2o_nitro:render_actions(n2o:actions()),Reply}),
            Req,State};
 
