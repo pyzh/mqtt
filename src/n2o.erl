@@ -10,32 +10,31 @@
 -export([start/2, stop/1, init/1, proc/2]).
 % MQTT section
 -export([load/1, unload/0]).
--export([on_client_connected/3, on_client_disconnected/3, on_client_subscribe/4, on_client_unsubscribe/4]).
--export([on_session_created/3, on_session_subscribed/4, on_session_unsubscribed/4, on_session_terminated/4]).
--export([on_message_publish/2, on_message_delivered/4, on_message_acked/4]).
+-export([on_client_connected/3,     on_client_disconnected/3, on_client_subscribe/4,
+         on_client_unsubscribe/4,   on_session_created/3,     on_session_subscribed/4,
+         on_session_unsubscribed/4, on_session_terminated/4,  on_message_publish/2,
+         on_message_delivered/4,    on_message_acked/4]).
+load(Env) ->
+    emqttd:hook('client.connected',    fun ?MODULE:on_client_connected/3,     [Env]),
+    emqttd:hook('client.disconnected', fun ?MODULE:on_client_disconnected/3,  [Env]),
+    emqttd:hook('client.subscribe',    fun ?MODULE:on_client_subscribe/4,     [Env]),
+    emqttd:hook('client.unsubscribe',  fun ?MODULE:on_client_unsubscribe/4,   [Env]),
+    emqttd:hook('session.created',     fun ?MODULE:on_session_created/3,      [Env]),
+    emqttd:hook('session.subscribed',  fun ?MODULE:on_session_subscribed/4,   [Env]),
+    emqttd:hook('session.unsubscribed',fun ?MODULE:on_session_unsubscribed/4, [Env]),
+    emqttd:hook('session.terminated',  fun ?MODULE:on_session_terminated/4,   [Env]),
+    emqttd:hook('message.publish',     fun ?MODULE:on_message_publish/2,      [Env]),
+    emqttd:hook('message.delivered',   fun ?MODULE:on_message_delivered/4,    [Env]),
+    emqttd:hook('message.acked',       fun ?MODULE:on_message_acked/4,        [Env]).
 
-tables()   -> [ caching ].
+tables()   -> [ cookies, caching ].
 opt()      -> [ set, named_table, { keypos, 1 }, public ].
 stop(_)    -> unload(), ok.
-start(_,_) -> load([]), supervisor:start_link({local,n2o},n2o,
-              [ n2o_async:start(#handler{module=?MODULE,class=system,group=n2o,state=[],name="timer"})]).
+start(_,_) -> load([]), X = supervisor:start_link({local,n2o},n2o, []),
+              n2o_async:start(#handler{module=?MODULE,class=system,group=n2o,state=[],name="timer"}),
+              X.
 init([])   -> [ ets:new(T,opt()) || T <- tables() ],
               { ok, { { one_for_one, 5, 10 }, [] } }.
-
-% EMQ PLUGIN
-
-load(Env) ->
-    emqttd:hook('client.connected', fun ?MODULE:on_client_connected/3, [Env]),
-    emqttd:hook('client.disconnected', fun ?MODULE:on_client_disconnected/3, [Env]),
-    emqttd:hook('client.subscribe', fun ?MODULE:on_client_subscribe/4, [Env]),
-    emqttd:hook('client.unsubscribe', fun ?MODULE:on_client_unsubscribe/4, [Env]),
-    emqttd:hook('session.created', fun ?MODULE:on_session_created/3, [Env]),
-    emqttd:hook('session.subscribed', fun ?MODULE:on_session_subscribed/4, [Env]),
-    emqttd:hook('session.unsubscribed', fun ?MODULE:on_session_unsubscribed/4, [Env]),
-    emqttd:hook('session.terminated', fun ?MODULE:on_session_terminated/4, [Env]),
-    emqttd:hook('message.publish', fun ?MODULE:on_message_publish/2, [Env]),
-    emqttd:hook('message.delivered', fun ?MODULE:on_message_delivered/4, [Env]),
-    emqttd:hook('message.acked', fun ?MODULE:on_message_acked/4, [Env]).
 
 on_client_connected(ConnAck, Client = #mqtt_client{client_id = ClientId}, _Env) ->
     io:format("client ~s connected, connack: ~w~n", [ClientId, ConnAck]),
@@ -110,15 +109,15 @@ on_message_acked(ClientId, Username, Message, _Env) ->
     {ok, Message}.
 
 unload() ->
-    emqttd:unhook('client.connected', fun ?MODULE:on_client_connected/3),
-    emqttd:unhook('client.disconnected', fun ?MODULE:on_client_disconnected/3),
-    emqttd:unhook('client.subscribe', fun ?MODULE:on_client_subscribe/4),
-    emqttd:unhook('client.unsubscribe', fun ?MODULE:on_client_unsubscribe/4),
-    emqttd:unhook('session.subscribed', fun ?MODULE:on_session_subscribed/4),
+    emqttd:unhook('client.connected',     fun ?MODULE:on_client_connected/3),
+    emqttd:unhook('client.disconnected',  fun ?MODULE:on_client_disconnected/3),
+    emqttd:unhook('client.subscribe',     fun ?MODULE:on_client_subscribe/4),
+    emqttd:unhook('client.unsubscribe',   fun ?MODULE:on_client_unsubscribe/4),
+    emqttd:unhook('session.subscribed',   fun ?MODULE:on_session_subscribed/4),
     emqttd:unhook('session.unsubscribed', fun ?MODULE:on_session_unsubscribed/4),
-    emqttd:unhook('message.publish', fun ?MODULE:on_message_publish/2),
-    emqttd:unhook('message.delivered', fun ?MODULE:on_message_delivered/4),
-    emqttd:unhook('message.acked', fun ?MODULE:on_message_acked/4).
+    emqttd:unhook('message.publish',      fun ?MODULE:on_message_publish/2),
+    emqttd:unhook('message.delivered',    fun ?MODULE:on_message_delivered/4),
+    emqttd:unhook('message.acked',        fun ?MODULE:on_message_acked/4).
 
 % Pickling n2o:pickle/1
 
@@ -128,7 +127,6 @@ unload() ->
 
 pickle(Data) -> ?PICKLER:pickle(Data).
 depickle(SerializedData) -> ?PICKLER:depickle(SerializedData).
-depickle(SerializedData, TTLSeconds) -> ?PICKLER:depickle(SerializedData, TTLSeconds).
 
 % Error handler n2o:error/2 n2o:stack/2
 
@@ -138,6 +136,11 @@ depickle(SerializedData, TTLSeconds) -> ?PICKLER:depickle(SerializedData, TTLSec
 
 stack(Error, Reason) -> ?ERRORING:stack_trace(Error, Reason).
 error(Class, Error) -> ?ERRORING:error_page(Class, Error).
+
+% Formatter
+
+format(Term) -> format(Term,?CTX#cx.formatter).
+format(Message, Formatter) -> n2o_format:format(Message, Formatter).
 
 % Cache facilities n2o:cache/[1,2,3]
 
@@ -157,8 +160,13 @@ ping() -> application:get_env(n2o,timer,{0,10,0}).
 
 invalidate_cache() -> ets:foldl(fun(X,_) -> n2o:cache(element(1,X)) end, 0, caching).
 
+ttl() -> application:get_env(n2o,ttl,60*15).
+till(Now,TTL) ->
+    calendar:gregorian_seconds_to_datetime(
+        calendar:datetime_to_gregorian_seconds(Now) + TTL).
+
 cache(Key, undefined) -> ets:delete(caching,Key);
-cache(Key, Value) -> ets:insert(caching,{Key,neo_session:till(calendar:local_time(), neo_session:ttl()),Value}), Value.
+cache(Key, Value) -> ets:insert(caching,{Key,till(calendar:local_time(), ttl()),Value}), Value.
 cache(Key, Value, Till) -> ets:insert(caching,{Key,Till,Value}), Value.
 cache(Key) ->
     Res = ets:lookup(caching,Key),
@@ -184,7 +192,7 @@ temp_id() -> "auto" ++ integer_to_list(erlang:unique_integer() rem 1000000).
 append(List, Key, Value) -> case Value of undefined -> List; _A -> [{Key, Value}|List] end.
 render(X) -> wf_render:render(X).
 
-version() -> proplists:get_value(vsn,element(2,application:get_all_key(neo))).
+version() -> proplists:get_value(vsn,element(2,application:get_all_key(n2o))).
 
 keyset(Name,Pos,List,New) ->
     case lists:keyfind(Name,Pos,List) of
@@ -198,7 +206,7 @@ context() -> get(context).
 context(Cx) -> put(context,Cx).
 context(Cx,Proto) -> lists:keyfind(Proto,1,Cx#cx.state).
 context(Cx,Proto,UserCx) ->
-   NewCx = Cx#cx{state=wf:setkey(Proto,1,Cx#cx.state,{Proto,UserCx})},
+   NewCx = Cx#cx{state=n2o:keyset(Proto,1,Cx#cx.state,{Proto,UserCx})},
    n2o:context(NewCx),
    NewCx.
 
@@ -226,3 +234,19 @@ error_page(Class,Error) ->
     [ io_lib:format("\t~w:~w/~w:~w\n",
         [ Module,Function,Arity,proplists:get_value(line, Location) ])
     ||  { Module,Function,Arity,Location} <- erlang:get_stacktrace() ].
+
+user() -> case session(<<"user">>) of undefined -> []; E -> nitro:to_list(E) end.
+user(User) -> session(<<"user">>,User).
+
+-ifndef(SESSION).
+-define(SESSION, (application:get_env(n2o,session,n2o))).
+-endif.
+
+session(Key) -> ?SESSION:get_value(Key,undefined).
+session(Key, Value) -> ?SESSION:set_value(Key, Value).
+
+remove_value(Key) -> erlang:put(Key,undefined).
+set_value(Key, Value) -> erlang:put(Key,Value).
+get_value(Key, DefaultValue) -> case erlang:get(Key) of
+                                     undefined -> DefaultValue;
+                                     Value -> Value end.

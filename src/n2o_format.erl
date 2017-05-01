@@ -31,24 +31,24 @@ format({Atom,Data}, json) ->
 
 format({Io,Eval,Data}, bert) ->
     io:format("BERT {~p,_,_}: ~tp~n",[Io,{io,io(Eval),bin(Data)}]),
-    term_to_binary({Io,io(Eval),bin(Data)});
+    {binary,term_to_binary({Io,io(Eval),bin(Data)})};
 
 format({bin,Data}, bert) ->
     io:format("BERT {bin,_}: ~tp~n",[Data]),
-    term_to_binary({bin,Data});
+    {binary,term_to_binary({bin,Data})};
 
 format({Atom,Data}, bert) ->
     io:format("BERT {~p,_}: ~tp~n",[Atom,bin(Data)]),
-    term_to_binary({Atom,bin(Data)});
+    {binary,term_to_binary({Atom,bin(Data)})};
 
 format(#ftp{}=FTP, bert) ->
     io:format("BERT {ftp,_,_,_,_,_,_,_,_,_,_,_,_}: ~tp~n",
              [FTP#ftp{data= <<>>}]),
-    term_to_binary(FTP);
+    {binary,term_to_binary(FTP)};
 
 format(Term, bert) ->
-    term_to_binary(Term);
+    {binary,term_to_binary(Term)};
 
 format(_,_) ->
-    term_to_binary({error,<<>>,
-            <<"Only JSON/BERT formatters are available.">>}).
+    {binary,term_to_binary({error,<<>>,
+            <<"Only JSON/BERT formatters are available.">>})}.

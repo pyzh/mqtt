@@ -21,7 +21,7 @@ info(#ftp{status={event,_}}=FTP, Req, State) ->
     Module=State#cx.module,
     Reply=try Module:event(FTP)
           catch E:R -> Error=n2o:stack(E,R), n2o:error(?MODULE,"Catch: ~p:~p~n~p",Error), Error end,
-    {reply,n2o:format({io,neo_nitrogen:render_actions(n2o:actions()),Reply}),
+    {reply,n2o:format({io,n2o_nitro:render_actions(n2o:actions()),Reply}),
            Req,State};
 
 info(#ftp{id=Link,status= <<"init">>,block=Block,offset=Offset}=FTP,Req,State) ->
@@ -31,21 +31,21 @@ info(#ftp{id=Link,status= <<"init">>,block=Block,offset=Offset}=FTP,Req,State) -
     ok=filelib:ensure_dir(FilePath),
     FileSize=case file:read_file_info(FilePath) of {ok,Fi} -> Fi#file_info.size; {error,_} -> 0 end,
 
-    io:format(?MODULE,"Info Init: ~p Offset: ~p Block: ~p~n",[FilePath,FileSize,Block]),
+    io:format("Info Init: ~p Offset: ~p Block: ~p~n",[FilePath,FileSize,Block]),
 
     Block2=case Block of 0 -> ?STOP; _ -> ?NEXT end,
     Offset2=case FileSize >= Offset of true -> FileSize; false -> 0 end,
     FTP2=FTP#ftp{block=Block2,offset=Offset2,filename=RelPath,data= <<>>},
 
     n2o_async:stop(file,Link),
-    n2o_async:start(#handler{module=?MODULE,class=file,group=neo,state=FTP2,name=Link}),
+    n2o_async:start(#handler{module=?MODULE,class=file,group=n2o,state=FTP2,name=Link}),
 
     {reply,n2o:format(FTP2),Req,State};
 
 info(#ftp{id=Link,status= <<"send">>}=FTP,Req,State) ->
 %    io:format("Info Send: ~p",[FTP#ftp{data= <<>>}]),
     Reply=try gen_server:call(n2o_async:pid({file,Link}),FTP)
-        catch _:_ -> n2o:error(?MODULE,"Info Error call the sync: ~p~n",[FTP#ftp{data= <<>>}]),
+        catch _:_ -> io:format("Info Error call the sync: ~p~n",[FTP#ftp{data= <<>>}]),
             FTP#ftp{data= <<>>,block=?STOP} end,
 %    io:format("reply ~p",[Reply#ftp{data= <<>>}]),
     {reply,n2o:format(Reply),Req,State};
@@ -54,10 +54,10 @@ info(#ftp{status= <<"recv">>}=FTP,Req,State) -> {reply,n2o:format(FTP),Req,State
 
 info(#ftp{status= <<"relay">>}=FTP,Req,State) -> {reply,n2o:format(FTP),Req, State};
 
-info(Message,Req,State) -> io:format(?MODULE, "Info Unknown message: ~p",[Message]),
+info(Message,Req,State) -> io:format("Info Unknown message: ~p",[Message]),
     {unknown,Message,Req,State}.
 
-% neo Handlers
+% n2o Handlers
 
 proc(init,#handler{state=#ftp{sid=Sid}=FTP}=Async) ->
 %    io:format(?MODULE,"Proc Init: ~p",[FTP#ftp{data= <<>>}]),

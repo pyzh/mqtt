@@ -12,12 +12,12 @@ info({init,_Rest},Req,State = #cx{module = Module}) ->
              n2o:render(Elements),
              {ok,[]}
        catch X:Y -> Stack = n2o:stack(X,Y),
-             n2o:error(?MODULE,"Event Main: ~p:~p~n~p", Stack),
+             io:format("Event Main: ~p:~p~n~p", Stack),
              {error,Stack} end of
         {ok, _} ->
              UserCx = try Module:event(init)
              catch C:E -> Error = n2o:stack(C,E),
-                          n2o:error(?MODULE,"Event Init: ~p:~p~n~p",Error),
+                          io:format("Event Init: ~p:~p~n~p~n",Error),
                           {stack,Error} end,
              {reply,n2o:format({io,render_actions(n2o:actions()),<<>>}),
                     Req,n2o:context(State,?MODULE,{init,UserCx})};
@@ -25,11 +25,18 @@ info({init,_Rest},Req,State = #cx{module = Module}) ->
              {reply,n2o:format({io,<<>>,E}),
                     Req,n2o:context(State,?MODULE,{error,E})} end;
 
+info({client,Message}, Req, State) ->
+    io:format("Client Message: ~p",[Message]),
+    Module = State#cx.module,
+    Reply = try Module:event({client,Message})
+          catch E:R -> Error = wf:stack(E,R), io:format("Catch: ~p:~p~n~p",Error), Error end,
+    {reply,n2o:format({io,render_actions(n2o:actions()),Reply}),Req,State};
+
 info({pickle,_,_,_}=Event, Req, State) ->
     n2o:actions([]),
     Result = try html_events(Event,State)
            catch E:R -> Stack = n2o:stack(E,R),
-                        n2o:error(?MODULE,"Catch: ~p:~p~n~p", Stack),
+                        io:format("Catch: ~p:~p~n~p", Stack),
                         {io,render_actions(n2o:actions()),Stack} end,
 
     {reply,n2o:format(Result),
@@ -46,7 +53,7 @@ info({direct,Message}, Req, State) ->
     Module = State#cx.module,
     Result = try Res = Module:event(Message), {direct,Res}
            catch E:R -> Stack = n2o:stack(E, R),
-                        n2o:error(?MODULE,"Catch: ~p:~p~n~p", Stack),
+                        io:format("Catch: ~p:~p~n~p", Stack),
                         {stack,Stack} end,
     {reply,n2o:format({io,render_actions(n2o:actions()),<<>>}),
            Req,n2o:context(State,?MODULE,Result)};
@@ -62,18 +69,18 @@ render_actions(Actions) ->
     n2o:actions([]),
     [First,Second].
 
-% neo events
+% n2o events
 
 html_events({pickle,Source,Pickled,Linked}=Pickle, State) ->
     io:format("Pickle: ~tp",[Pickle]),
     Ev = n2o:depickle(Pickled),
     case Ev of
          #ev{} -> render_ev(Ev,Source,Linked,State);
-         CustomEnvelop -> n2o:error("Only #ev{} events for now: ~p",[CustomEnvelop]) end,
+         CustomEnvelop -> io:format("Only #ev{} events for now: ~p",[CustomEnvelop]) end,
     {io,render_actions(n2o:actions()),<<>>}.
 
 render_ev(#ev{module=M,name=F,msg=P,trigger=T},_Source,Linked,State) ->
     case F of
          api_event -> M:F(P,Linked,State);
-         event -> lists:map(fun({K,V})-> put(K,n2o:to_binary(V)) end,Linked), M:F(P);
+         event -> lists:map(fun({K,V})-> put(K,nitro:to_binary(V)) end,Linked), M:F(P);
          _UserCustomEvent -> M:F(P,T,State) end.

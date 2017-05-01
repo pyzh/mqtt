@@ -5,5 +5,5 @@
     {applications, [kernel, stdlib]},
     {modules,      []},
     {registered,   []},
-    {mod, { neo,   []}},
+    {mod, { n2o,   []}},
     {env,          []} ]}.

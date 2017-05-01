@@ -19,6 +19,8 @@
 
 -record(io,      { eval, data }).
 -record(bin,     { data }).
+-record(client,  { data }).
+-record(server,  { data }).
 
 % Nitrogen Protocol
 
