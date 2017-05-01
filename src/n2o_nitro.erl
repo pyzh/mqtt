@@ -14,8 +14,8 @@ info({init,_Rest},Req,State = #cx{module = Module}) ->
        catch X:Y -> Stack = n2o:stack(X,Y),
              n2o:error(?MODULE,"Event Main: ~p:~p~n~p", Stack),
              {error,Stack} end of
-        {ok, Init} ->
-    	     UserCx = try Module:event(init)
+        {ok, _} ->
+             UserCx = try Module:event(init)
              catch C:E -> Error = n2o:stack(C,E),
                           n2o:error(?MODULE,"Event Init: ~p:~p~n~p",Error),
                           {stack,Error} end,
@@ -38,7 +38,7 @@ info({pickle,_,_,_}=Event, Req, State) ->
 info({flush,Actions}, Req, State) ->
     n2o:actions([]),
     Render = iolist_to_binary(render_actions(Actions)),
-    n2o:info(?MODULE,"Flush Message: ~tp",[Render]),
+    io:format("Flush Message: ~tp",[Render]),
     {reply,n2o:format({io,Render,<<>>}),Req, State};
 
 info({direct,Message}, Req, State) ->
@@ -65,7 +65,7 @@ render_actions(Actions) ->
 % neo events
 
 html_events({pickle,Source,Pickled,Linked}=Pickle, State) ->
-    n2o:info(?MODULE,"Pickle: ~tp",[Pickle]),
+    io:format("Pickle: ~tp",[Pickle]),
     Ev = n2o:depickle(Pickled),
     case Ev of
          #ev{} -> render_ev(Ev,Source,Linked,State);

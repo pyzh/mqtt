@@ -17,7 +17,7 @@ filename(#ftp{sid=Sid,filename=FileName}) -> filename:join(n2o:to_list(Sid),File
 % File Transfer Protocol
 
 info(#ftp{status={event,_}}=FTP, Req, State) ->
-    n2o:info(?MODULE,"Event Message: ~p",[FTP#ftp{data= <<>>}]),
+%    io:format("Event Message: ~p",[FTP#ftp{data= <<>>}]),
     Module=State#cx.module,
     Reply=try Module:event(FTP)
           catch E:R -> Error=n2o:stack(E,R), n2o:error(?MODULE,"Catch: ~p:~p~n~p",Error), Error end,
@@ -31,7 +31,7 @@ info(#ftp{id=Link,status= <<"init">>,block=Block,offset=Offset}=FTP,Req,State) -
     ok=filelib:ensure_dir(FilePath),
     FileSize=case file:read_file_info(FilePath) of {ok,Fi} -> Fi#file_info.size; {error,_} -> 0 end,
 
-    n2o:info(?MODULE,"Info Init: ~p Offset: ~p Block: ~p~n",[FilePath,FileSize,Block]),
+    io:format(?MODULE,"Info Init: ~p Offset: ~p Block: ~p~n",[FilePath,FileSize,Block]),
 
     Block2=case Block of 0 -> ?STOP; _ -> ?NEXT end,
     Offset2=case FileSize >= Offset of true -> FileSize; false -> 0 end,
@@ -43,30 +43,30 @@ info(#ftp{id=Link,status= <<"init">>,block=Block,offset=Offset}=FTP,Req,State) -
     {reply,n2o:format(FTP2),Req,State};
 
 info(#ftp{id=Link,status= <<"send">>}=FTP,Req,State) ->
-    n2o:info(?MODULE,"Info Send: ~p",[FTP#ftp{data= <<>>}]),
+%    io:format("Info Send: ~p",[FTP#ftp{data= <<>>}]),
     Reply=try gen_server:call(n2o_async:pid({file,Link}),FTP)
         catch _:_ -> n2o:error(?MODULE,"Info Error call the sync: ~p~n",[FTP#ftp{data= <<>>}]),
             FTP#ftp{data= <<>>,block=?STOP} end,
-    n2o:info(?MODULE,"reply ~p",[Reply#ftp{data= <<>>}]),
+%    io:format("reply ~p",[Reply#ftp{data= <<>>}]),
     {reply,n2o:format(Reply),Req,State};
 
 info(#ftp{status= <<"recv">>}=FTP,Req,State) -> {reply,n2o:format(FTP),Req,State};
 
 info(#ftp{status= <<"relay">>}=FTP,Req,State) -> {reply,n2o:format(FTP),Req, State};
 
-info(Message,Req,State) -> n2o:info(?MODULE, "Info Unknown message: ~p",[Message]),
+info(Message,Req,State) -> io:format(?MODULE, "Info Unknown message: ~p",[Message]),
     {unknown,Message,Req,State}.
 
 % neo Handlers
 
 proc(init,#handler{state=#ftp{sid=Sid}=FTP}=Async) ->
-    n2o:info(?MODULE,"Proc Init: ~p",[FTP#ftp{data= <<>>}]),
+%    io:format(?MODULE,"Proc Init: ~p",[FTP#ftp{data= <<>>}]),
     n2o:send(Sid,FTP#ftp{data= <<>>,status={event,init}}),
     {ok,Async};
 
 proc(#ftp{id=Link,sid=Sid,data=Data,status= <<"send">>,block=Block}=FTP,
      #handler{state=#ftp{size=TotalSize,offset=Offset,filename=RelPath}}=Async) when Offset+Block >= TotalSize ->
-        n2o:info(?MODULE,"Proc Stop ~p, last piece size: ~p", [FTP#ftp{data= <<>>},byte_size(Data)]),
+%        io:format(?MODULE,"Proc Stop ~p, last piece size: ~p", [FTP#ftp{data= <<>>},byte_size(Data)]),
         case file:write_file(filename:join(?ROOT,RelPath),<<Data/binary>>,[append,raw]) of
                 {error,Reason} -> {reply,{error,Reason},Async};
                 ok ->
@@ -78,7 +78,7 @@ proc(#ftp{id=Link,sid=Sid,data=Data,status= <<"send">>,block=Block}=FTP,
 proc(#ftp{data=Data,block=Block}=FTP,
      #handler{state=#ftp{offset=Offset,filename=RelPath}}=Async) ->
     FTP2=FTP#ftp{status= <<"send">>,offset=Offset+Block },
-    n2o:info(?MODULE,"Proc Process ~p",[FTP2#ftp{data= <<>>}]),
+%    io:format(?MODULE,"Proc Process ~p",[FTP2#ftp{data= <<>>}]),
     case file:write_file(filename:join(?ROOT,RelPath),<<Data/binary>>,[append,raw]) of
         {error,Reason} -> {reply,{error,Reason},Async};
         ok -> {reply,FTP2#ftp{data= <<>>},Async#handler{state=FTP2#ftp{filename=RelPath}}} end.

@@ -47,7 +47,7 @@ stop(Class,Name) ->
 
 start(#handler{class=Class,name=Name,module=Module,group=Group} = Async) ->
     ChildSpec = {{Class,Name},{?MODULE,start_link,[Async]},transient,5000,worker,[Module]},
-    n2o:info(?MODULE,"Async Start Attempt ~p~n",[Async#handler{config=[]}]),
+    io:format("Async Start Attempt ~p~n",[Async#handler{config=[]}]),
     case supervisor:start_child(Group,ChildSpec) of
          {ok,Pid}   -> {Pid,Async#handler.name};
          {ok,Pid,_} -> {Pid,Async#handler.name};
