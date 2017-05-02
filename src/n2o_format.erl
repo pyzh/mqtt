@@ -15,14 +15,14 @@ format(Term) -> format(Term,?CTX#cx.formatter).
 % JSON Encoder
 
 format({Io,Eval,Data}, json) ->
-    io:format("JSON {~p,_,_}: ~tp~n",[Io,io(Eval)]),
+%    io:format("JSON {~p,_,_}: ~tp~n",[Io,io(Eval)]),
     ?N2O_JSON:encode([{t,104},{v,[
                      [{t,100},{v,io}],
                      [{t,109},{v,io(Eval)}],
                      [{t,109},{v,list(Data)}]]}]);
 
 format({Atom,Data}, json) ->
-    io:format("JSON {~p,_}: ~tp~n",[Atom,list(Data)]),
+%    io:format("JSON {~p,_}: ~tp~n",[Atom,list(Data)]),
     ?N2O_JSON:encode([{t,104},{v,[
                      [{t,100},{v,Atom}],
                      [{t,109},{v,list(Data)}]]}]);
@@ -30,20 +30,20 @@ format({Atom,Data}, json) ->
 % BERT Encoder
 
 format({Io,Eval,Data}, bert) ->
-    io:format("BERT {~p,_,_}: ~tp~n",[Io,{io,io(Eval),bin(Data)}]),
+%    io:format("BERT {~p,_,_}: ~tp~n",[Io,{io,io(Eval),bin(Data)}]),
     {binary,term_to_binary({Io,io(Eval),bin(Data)})};
 
 format({bin,Data}, bert) ->
-    io:format("BERT {bin,_}: ~tp~n",[Data]),
+%    io:format("BERT {bin,_}: ~tp~n",[Data]),
     {binary,term_to_binary({bin,Data})};
 
 format({Atom,Data}, bert) ->
-    io:format("BERT {~p,_}: ~tp~n",[Atom,bin(Data)]),
+%    io:format("BERT {~p,_}: ~tp~n",[Atom,bin(Data)]),
     {binary,term_to_binary({Atom,bin(Data)})};
 
 format(#ftp{}=FTP, bert) ->
-    io:format("BERT {ftp,_,_,_,_,_,_,_,_,_,_,_,_}: ~tp~n",
-             [FTP#ftp{data= <<>>}]),
+%    io:format("BERT {ftp,_,_,_,_,_,_,_,_,_,_,_,_}: ~tp~n",
+%             [FTP#ftp{data= <<>>}]),
     {binary,term_to_binary(FTP)};
 
 format(Term, bert) ->

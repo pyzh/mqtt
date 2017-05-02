@@ -26,10 +26,11 @@ info({init,_Rest},Req,State = #cx{module = Module}) ->
                     Req,n2o:context(State,?MODULE,{error,E})} end;
 
 info({client,Message}, Req, State) ->
-    io:format("Client Message: ~p",[Message]),
+%    io:format("Client Message: ~p",[Message]),
     Module = State#cx.module,
     Reply = try Module:event({client,Message})
-          catch E:R -> Error = wf:stack(E,R), io:format("Catch: ~p:~p~n~p",Error), Error end,
+          catch E:R -> Error = wf:stack(E,R),
+                       io:format("Catch: ~p:~p~n~p",Error), Error end,
     {reply,n2o:format({io,render_actions(n2o:actions()),Reply}),Req,State};
 
 info({pickle,_,_,_}=Event, Req, State) ->
@@ -45,7 +46,7 @@ info({pickle,_,_,_}=Event, Req, State) ->
 info({flush,Actions}, Req, State) ->
     n2o:actions([]),
     Render = iolist_to_binary(render_actions(Actions)),
-    io:format("Flush Message: ~tp",[Render]),
+%    io:format("Flush Message: ~tp",[Render]),
     {reply,n2o:format({io,Render,<<>>}),Req, State};
 
 info({direct,Message}, Req, State) ->
@@ -72,11 +73,11 @@ render_actions(Actions) ->
 % n2o events
 
 html_events({pickle,Source,Pickled,Linked}=Pickle, State) ->
-    io:format("Pickle: ~tp",[Pickle]),
+%    io:format("Pickle: ~tp",[Pickle]),
     Ev = n2o:depickle(Pickled),
     case Ev of
          #ev{} -> render_ev(Ev,Source,Linked,State);
-         CustomEnvelop -> io:format("Only #ev{} events for now: ~p",[CustomEnvelop]) end,
+         CustomEnvelop -> io:format("EV expected: ~p~n",[CustomEnvelop]) end,
     {io,render_actions(n2o:actions()),<<>>}.
 
 render_ev(#ev{module=M,name=F,msg=P,trigger=T},_Source,Linked,State) ->
