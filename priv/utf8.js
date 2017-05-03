@@ -4,13 +4,21 @@ try { module.exports = { dec: utf8_dec, enc: utf8_toByteArray }; } catch (e) { }
 
 function utf8_toByteArray(str) {
     var byteArray = [];
-    if (str !== undefined && str !== null)
-        for (var i = 0; i < str.length; i++)
-            if (str.charCodeAt(i) <= 0x7F) byteArray.push(str.charCodeAt(i));
-            else {
-                var h = encodeURIComponent(str.charAt(i)).substr(1).split('%');
-                for (var j = 0; j < h.length; j++) byteArray.push(parseInt(h[j], 16));
+    if (str !== undefined && str !== null) {
+        for (var i = 0; i < str.length; i++) {
+            if(!str.charCodeAt) {
+                console.log(str);
+            } else {
+                if (str.charCodeAt(i) <= 0x7F) {
+                        byteArray.push(str.charCodeAt(i));
+                    }
+                else {
+                    var h = encodeURIComponent(str.charAt(i)).substr(1).split('%');
+                    for (var j = 0; j < h.length; j++) byteArray.push(parseInt(h[j], 16));
+                }
             }
+        }
+    }
     return { t: 107, v: byteArray };
 };
 

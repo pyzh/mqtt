@@ -9,7 +9,7 @@ var topic = module + "_" + params.room || "lobby";
 console.log("Room: " + topic);
 var mqtt = new Paho.MQTT.Client("127.0.0.1", 8083, '');
 var subscribeOptions = {
-    qos: 0,  // QoS
+    qos: 2,  // QoS
     invocationContext: { foo: true },  // Passed to success / failure callback
     onSuccess: function () { console.log("N2O Subscribed"); },
     onFailure: function (m) { console.log("N2O Subscription failed: " + message.errorMessage); },
@@ -24,7 +24,7 @@ var ws = {
     send: function (payload) {
         var message = new Paho.MQTT.Message(payload);
         message.destinationName = topic;
-        message.qos = 0;
+        message.qos = 2;
         mqtt.send(message);
     }
 };
@@ -36,7 +36,7 @@ function MQTT_start() {
             m.payloadBytes.byteOffset + m.payloadBytes.length);
         try {
             erlang = dec(BERT);
-            console.log(utf8_dec(erlang.v[1].v));
+            console.log(erlang);
             for (var i = 0; i < $bert.protos.length; i++) {
                 p = $bert.protos[i]; if (p.on(erlang, p.do).status == "ok") return;
             }

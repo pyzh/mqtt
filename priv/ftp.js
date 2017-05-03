@@ -50,7 +50,10 @@ var ftp = {
         this.reader = new FileReader();
         this.reader.onloadend = function (e) {
             var res = e.target, data = e.target.result;
-            if (res.readyState === FileReader.DONE && data.byteLength > 0) ftp.send(item, data);
+            if (res.readyState === FileReader.DONE && data.byteLength > 0) {
+                console.log(item);
+                ftp.send(item, data);
+            }
         };
         this.reader.readAsArrayBuffer(item.file.slice(item.offset, item.offset + item.block));
     },
@@ -62,6 +65,9 @@ $file.do = function (rsp) {
     var offset = rsp.v[6].v, block = rsp.v[7].v, status = utf8_dec(rsp.v[9].v);
     switch (status) {
         case 'init':
+            console.log("init block="+block);
+            if(block == 1) return;
+            
             var item = ftp.item(utf8_dec(rsp.v[1].v));
             item.offset = offset;
             item.block = block;
@@ -76,6 +82,6 @@ $file.do = function (rsp) {
             item.block = block;
             (block > 0 && ftp.active) ? ftp.send_slice(item) : ftp.stop(item.id)
             break;
-        case 'relay': if (typeof ftp.relay === 'function') ftp.relay(rsp); break;
+        case 'relay': debugger; if (typeof ftp.relay === 'function') ftp.relay(rsp); break;
     }
 };

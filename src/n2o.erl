@@ -62,7 +62,7 @@ on_client_subscribe(ClientId, Username, TopicTable, _Env) ->
     case n2o_proto:info({init,<<>>},[],?CTX) of
          {reply, {binary, M}, _, #cx{}} ->
              Msg = emqttd_message:make(Name, 0, Name, M),
-%             io:format("N2O ~p~n Message: ~p Pid: ~p~n",[ClientId, binary_to_term(M), self()]),
+             io:format("N2O ~p~n Message: ~p Pid: ~p~n",[ClientId, binary_to_term(M), self()]),
              self() ! {deliver, Msg};
          _ -> skip end,
     {ok, TopicTable}.
@@ -94,20 +94,72 @@ on_message_publish(Message = #mqtt_message{topic = _Topic, from = {_ClientId,_},
 
 on_message_delivered(ClientId, _Username, Message = #mqtt_message{topic = _Topic, payload = Payload}, _Env) ->
     io:format("DELIVER to client(~p): ~p~n", [ClientId, self()]),
+    {ok,Message#mqtt_message{payload = <<>>}}.
+    % Name = binary_to_list(ClientId),
+    % case n2o_proto:info(binary_to_term(Payload),[],?CTX) of
+    %     {reply, {binary, M}, _R, #cx{}} ->
+    %         % io:format("on_message_delivered BINARY ~p~n Message: ~p Pid: ~p~n",[ClientId, binary_to_term(M), self()]),
+    %         case binary_to_term(M) of
+    %             #ftp{status= <<"init">>} ->
+    %                 io:format("on_message_delivered FTP ~p  Pid: ~p~n",[ftp, self()]),
+    %                 Msg = emqttd_message:make(Name, 0, Name, M),
+    %                 self() ! {deliver, Msg},
+    %                 {ok, Message#mqtt_message{payload= <<>>}};
+    %             % {io,<<>>,<<>>} -> {ok,Message};
+    %             {io,X,X2} ->
+    %                 io:format("on_message_delivered IO ~p ~p Pid: ~p~n",[X, X2, self()]),
+    %                 Msg = emqttd_message:make(Name, 0, Name, M),
+    %                 % io:format("IO ~p~n Message: ~p Pid: ~p~n",[ClientId, X, self()]),
+    %                 self() ! {deliver, Msg},
+    %                 {ok, M};
+    %             {binary,FTP} ->
+    %                 io:format("on_message_delivered FTP-X ~p  Pid: ~p~n",[FTP, self()]),
+    %                 Msg = emqttd_message:make(Name, 0, Name, FTP),
+    %                 self() ! {deliver, Msg},
+    %                 {ok, Message#mqtt_message{payload= <<>>}};
+    %             Q ->
+    %                 io:format("on_message_delivered UNKNOWN ~p  Pid: ~p~n",[Q, self()]),
+    %                 {ok, Message}
+    %         end;
+    %     W ->
+    %         io:format("on_message_delivered NO_REPLY ~p  Pid: ~p~n",[W, self()]),
+    %         {ok, Message}
+    % end.
+
+on_message_acked(ClientId, Username, #mqtt_message{topic = _Topic, payload = Payload}=Message, _Env) ->
+    io:format("client(~s/~s) acked: ~s~n", [Username, ClientId, emqttd_message:format(Message)]),
+    % {ok, Message}.
+    
     Name = binary_to_list(ClientId),
     case n2o_proto:info(binary_to_term(Payload),[],?CTX) of
-         {reply, {binary, M}, _R, #cx{}} ->
-              case binary_to_term(M) of
-                   {io,X,_} -> Msg = emqttd_message:make(Name, 0, Name, M),
-%                               io:format("IO ~p~n Message: ~p Pid: ~p~n",[ClientId, X, self()]),
-                               self() ! {deliver, Msg},
-                               {ok, Message};
-                          _ -> {ok, Message} end;
-                          _ -> {ok, Message} end.
-
-on_message_acked(ClientId, Username, Message, _Env) ->
-    io:format("client(~s/~s) acked: ~s~n", [Username, ClientId, emqttd_message:format(Message)]),
-    {ok, Message}.
+        {reply, {binary, M}, _R, #cx{}} ->
+            % io:format("on_message_delivered BINARY ~p~n Message: ~p Pid: ~p~n",[ClientId, binary_to_term(M), self()]),
+            case binary_to_term(M) of
+                #ftp{status= <<"init">>} ->
+                    io:format("on_message_delivered FTP ~p  Pid: ~p~n",[ftp, self()]),
+                    Msg = emqttd_message:make(Name, 0, Name, M),
+                    self() ! {deliver, Msg},
+                    {ok, Message#mqtt_message{payload= <<>>}};
+                % {io,<<>>,<<>>} -> {ok,Message};
+                {io,X,X2} ->
+                    io:format("on_message_delivered IO ~p ~p Pid: ~p~n",[X, X2, self()]),
+                    Msg = emqttd_message:make(Name, 0, Name, M),
+                    % io:format("IO ~p~n Message: ~p Pid: ~p~n",[ClientId, X, self()]),
+                    self() ! {deliver, Msg},
+                    {ok, M};
+                {binary,FTP} ->
+                    io:format("on_message_delivered FTP-X ~p  Pid: ~p~n",[FTP, self()]),
+                    Msg = emqttd_message:make(Name, 0, Name, FTP),
+                    self() ! {deliver, Msg},
+                    {ok, Message#mqtt_message{payload= <<>>}};
+                Q ->
+                    io:format("on_message_delivered UNKNOWN ~p  Pid: ~p~n",[Q, self()]),
+                    {ok, Message}
+            end;
+        W ->
+            io:format("on_message_delivered NO_REPLY ~p  Pid: ~p~n",[W, self()]),
+            {ok, Message}
+    end.
 
 unload() ->
     emqttd:unhook('client.connected',     fun ?MODULE:on_client_connected/3),
