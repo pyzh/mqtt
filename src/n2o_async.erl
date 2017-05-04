@@ -15,7 +15,7 @@ async(Name, F) -> async(async,Name,F).
 async(Class,Name,F) ->
     Key = key(),
     Handler = #handler{module=?MODULE,class=async,group=n2o,
-                       name={Name,Key},config={F,?REQ},state=self()},
+                       name={Name,Key},config={F,?REQ(Key)},state=self()},
     case n2o_async:start(Handler) of
         {error,{already_started,P}} -> init(P,Class,{Name,Key}), {P,{Class,{Name,Key}}};
         {P,X} when is_pid(P)        -> init(P,Class,X),          {P,{Class,X}};
@@ -27,7 +27,7 @@ send(Name,Message) -> send(async,{Name,key()},Message).
 send(Class,Name,Message) -> gen_server:call(n2o_async:pid({Class,Name}),Message).
 
 pid({Class,Name}) -> n2o:cache({Class,Name}).
-key() -> erlang:system_time(nanosecond).
+key() -> #cx{session=Key} = get(context), Key.
 
 restart(Name) -> restart(async,{Name,key()}).
 restart(Class,Name) ->
@@ -58,7 +58,7 @@ init_context(Req) ->
     Ctx = n2o:init_context(Req),
     NewCtx = n2o:fold(init, Ctx#cx.handlers, Ctx),
     n2o:actions(NewCtx#cx.actions),
-    n2o:context(NewCtx),
+    n2o:cache(crypto:sha(Req),NewCtx),
     NewCtx.
 
 % Generic Async Server

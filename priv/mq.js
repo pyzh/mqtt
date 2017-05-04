@@ -9,7 +9,7 @@ var topic = module + "_" + params.room || "lobby";
 console.log("Room: " + topic);
 var mqtt = new Paho.MQTT.Client("127.0.0.1", 8083, '');
 var subscribeOptions = {
-    qos: 2,  // QoS
+    qos: 0,  // QoS
     invocationContext: { foo: true },  // Passed to success / failure callback
     onSuccess: function () { console.log("N2O Subscribed"); },
     onFailure: function (m) { console.log("N2O Subscription failed: " + message.errorMessage); },

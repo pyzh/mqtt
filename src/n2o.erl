@@ -1,5 +1,6 @@
 -module(n2o).
 -description('N2O Protocol Server for MQTT').
+-compile({parse_transform, lager_transform}).
 -author('Maxim Sokhatsky').
 -license('ISC').
 -behaviour(supervisor).
@@ -37,12 +38,19 @@ init([])   -> [ ets:new(T,opt()) || T <- tables() ],
               { ok, { { one_for_one, 5, 10 }, [] } }.
 
 on_client_connected(ConnAck, Client = #mqtt_client{client_id = ClientId}, _Env) ->
-    io:format("client ~s connected, connack: ~w~n", [ClientId, ConnAck]),
+    io:format("client ~s connected, connack: ~w\r~n", [ClientId, ConnAck]),
     {ok, Client}.
 
 on_client_disconnected(Reason, _Client = #mqtt_client{client_id = ClientId}, _Env) ->
-    io:format("client ~s disconnected, reason: ~w~n", [ClientId, Reason]),
+    io:format("client ~s disconnected, reason: ~w\r~n", [ClientId, Reason]),
     ok.
+
+send(X,Y) -> gproc:send({p,l,X},Y).
+reg(Pool) -> reg(Pool,undefined).
+reg(X,Y) ->
+    case cache({pool,X}) of
+         undefined -> gproc:reg({p,l,X},Y), cache({pool,X},X);
+                 _ -> skip end.
 
 select(Topic) -> {SelectModule,Function} = application:get_env(n2o,select,{n2o,select}),
     [Module,Room] = case string:tokens(binary_to_list(iolist_to_binary(Topic)),"_") of
@@ -53,113 +61,73 @@ select(Topic) -> {SelectModule,Function} = application:get_env(n2o,select,{n2o,s
 select(Module,Room) -> [list_to_atom(Module),Room].
 
 on_client_subscribe(ClientId, Username, TopicTable, _Env) ->
-    io:format("client(~s/~s) will subscribe: ~p~n", [Username, ClientId, TopicTable]),
-    Name = binary_to_list(iolist_to_binary(ClientId)),
-    BinTopic = element(1,hd(TopicTable)),
-    put(topic,BinTopic),
-    [Module,Room] = select(BinTopic),
-    n2o:context(#cx{module=Module,formatter=bert,params=[]}),
-    case n2o_proto:info({init,<<>>},[],?CTX) of
-         {reply, {binary, M}, _, #cx{}} ->
-             Msg = emqttd_message:make(Name, 0, Name, M),
-             io:format("N2O ~p~n Message: ~p Pid: ~p~n",[ClientId, binary_to_term(M), self()]),
-             self() ! {deliver, Msg};
-         _ -> skip end,
+    io:format("client(~s/~s) subscribe ~p\r~n", [ClientId, Username, TopicTable]),
     {ok, TopicTable}.
 
 on_client_unsubscribe(ClientId, Username, TopicTable, _Env) ->
-    io:format("client(~s/~s) unsubscribe ~p~n", [ClientId, Username, TopicTable]),
+    io:format("client(~s/~s) unsubscribe ~p\r~n", [ClientId, Username, TopicTable]),
     {ok, TopicTable}.
 
 on_session_created(ClientId, Username, _Env) ->
     io:format("session(~s/~s) created.", [ClientId, Username]).
 
-on_session_subscribed(_ClientId, Username, {Topic, Opts}, _Env) ->
-    io:format("session(~s/~p) subscribed: ~p~n", [Username, self(), {Topic, Opts}]),
+on_session_subscribed(ClientId, Username, {Topic, Opts}, _Env) ->
+    io:format("session ~p ~p subscribed: ~p\r~n", [ClientId, self(), Topic]),
+    Name = iolist_to_binary(ClientId),
+    BinTopic = iolist_to_binary(Topic), %element(1,hd(TopicTable)),
+    put(topic,BinTopic),
+    [Module,Room] = select(BinTopic),
+    Cx = #cx{module=Module,session=ClientId,req=self(),formatter=bert,params=[]},
+    put(context,Cx),
+    n2o:cache(ClientId,Cx),
+    case n2o_proto:info({init,<<>>},[],?CTX(ClientId)) of
+         {reply, {binary, M}, _, _} ->
+              Msg = emqttd_message:make(Name, 2, BinTopic, M),
+              io:format("N2O, ~p MOD ~p LOGIN: ~p\r~n",[ClientId, Module, self()]),
+              emqttd:publish(Msg);
+         _ -> skip end,
     {ok, {Topic, Opts}}.
 
 on_session_unsubscribed(ClientId, Username, {Topic, Opts}, _Env) ->
-    io:format("session(~s/~s) unsubscribed: ~p~n", [Username, ClientId, {Topic, Opts}]),
+    io:format("session(~s/~s) unsubscribed: ~p\r~n", [Username, ClientId, {Topic, Opts}]),
     ok.
 
 on_session_terminated(ClientId, Username, Reason, _Env) ->
     io:format("session(~s/~s) terminated: ~p.", [ClientId, Username, Reason]).
 
-on_message_publish(Message = #mqtt_message{topic = <<"$SYS/", _/binary>>}, _Env) ->
+on_message_publish(Message = #mqtt_message{topic = <<"$SYS/", _/binary>>}, _) ->
     {ok, Message};
 
-on_message_publish(Message = #mqtt_message{topic = _Topic, from = {_ClientId,_}, payload = Payload}, _Env) ->
-    io:format("publish ~p bytes~n", [size(Payload)]),
+on_message_publish(Message = #mqtt_message{topic = Topic, from=From, payload = Payload}, _Env) ->
     {ok, Message}.
 
-on_message_delivered(ClientId, _Username, Message = #mqtt_message{topic = _Topic, payload = Payload}, _Env) ->
-    io:format("DELIVER to client(~p): ~p~n", [ClientId, self()]),
-    {ok,Message#mqtt_message{payload = <<>>}}.
-    % Name = binary_to_list(ClientId),
-    % case n2o_proto:info(binary_to_term(Payload),[],?CTX) of
-    %     {reply, {binary, M}, _R, #cx{}} ->
-    %         % io:format("on_message_delivered BINARY ~p~n Message: ~p Pid: ~p~n",[ClientId, binary_to_term(M), self()]),
-    %         case binary_to_term(M) of
-    %             #ftp{status= <<"init">>} ->
-    %                 io:format("on_message_delivered FTP ~p  Pid: ~p~n",[ftp, self()]),
-    %                 Msg = emqttd_message:make(Name, 0, Name, M),
-    %                 self() ! {deliver, Msg},
-    %                 {ok, Message#mqtt_message{payload= <<>>}};
-    %             % {io,<<>>,<<>>} -> {ok,Message};
-    %             {io,X,X2} ->
-    %                 io:format("on_message_delivered IO ~p ~p Pid: ~p~n",[X, X2, self()]),
-    %                 Msg = emqttd_message:make(Name, 0, Name, M),
-    %                 % io:format("IO ~p~n Message: ~p Pid: ~p~n",[ClientId, X, self()]),
-    %                 self() ! {deliver, Msg},
-    %                 {ok, M};
-    %             {binary,FTP} ->
-    %                 io:format("on_message_delivered FTP-X ~p  Pid: ~p~n",[FTP, self()]),
-    %                 Msg = emqttd_message:make(Name, 0, Name, FTP),
-    %                 self() ! {deliver, Msg},
-    %                 {ok, Message#mqtt_message{payload= <<>>}};
-    %             Q ->
-    %                 io:format("on_message_delivered UNKNOWN ~p  Pid: ~p~n",[Q, self()]),
-    %                 {ok, Message}
-    %         end;
-    %     W ->
-    %         io:format("on_message_delivered NO_REPLY ~p  Pid: ~p~n",[W, self()]),
-    %         {ok, Message}
-    % end.
+n2o_proto(Res,ClientId,Topic) ->
+    Cx = n2o:cache(ClientId),
+    put(context,Cx),
+    case n2o_proto:info(Res,Cx#cx.req,Cx) of
+         {reply, <<>>, _, _} ->
+             {stop, []};
+         {reply, {binary, M}, _, _} ->
+             io:format("PROTO: ~p\r~n",[{ClientId,Topic}]),
+             Msg = emqttd_message:make(ClientId, 0, Topic, M),
+             emqttd:publish(Msg),
+             {ok, Msg};
+         W ->
+             {stop, []}
+     end.
 
-on_message_acked(ClientId, Username, #mqtt_message{topic = _Topic, payload = Payload}=Message, _Env) ->
-    io:format("client(~s/~s) acked: ~s~n", [Username, ClientId, emqttd_message:format(Message)]),
-    % {ok, Message}.
-    
-    Name = binary_to_list(ClientId),
-    case n2o_proto:info(binary_to_term(Payload),[],?CTX) of
-        {reply, {binary, M}, _R, #cx{}} ->
-            % io:format("on_message_delivered BINARY ~p~n Message: ~p Pid: ~p~n",[ClientId, binary_to_term(M), self()]),
-            case binary_to_term(M) of
-                #ftp{status= <<"init">>} ->
-                    io:format("on_message_delivered FTP ~p  Pid: ~p~n",[ftp, self()]),
-                    Msg = emqttd_message:make(Name, 0, Name, M),
-                    self() ! {deliver, Msg},
-                    {ok, Message#mqtt_message{payload= <<>>}};
-                % {io,<<>>,<<>>} -> {ok,Message};
-                {io,X,X2} ->
-                    io:format("on_message_delivered IO ~p ~p Pid: ~p~n",[X, X2, self()]),
-                    Msg = emqttd_message:make(Name, 0, Name, M),
-                    % io:format("IO ~p~n Message: ~p Pid: ~p~n",[ClientId, X, self()]),
-                    self() ! {deliver, Msg},
-                    {ok, M};
-                {binary,FTP} ->
-                    io:format("on_message_delivered FTP-X ~p  Pid: ~p~n",[FTP, self()]),
-                    Msg = emqttd_message:make(Name, 0, Name, FTP),
-                    self() ! {deliver, Msg},
-                    {ok, Message#mqtt_message{payload= <<>>}};
-                Q ->
-                    io:format("on_message_delivered UNKNOWN ~p  Pid: ~p~n",[Q, self()]),
-                    {ok, Message}
-            end;
-        W ->
-            io:format("on_message_delivered NO_REPLY ~p  Pid: ~p~n",[W, self()]),
-            {ok, Message}
-    end.
+on_message_delivered(ClientId, _Username, Message = #mqtt_message{topic = Topic, payload = Payload}, _Env) ->
+    {ok,Message}.
+
+
+on_message_acked(ClientId, Username, Message = #mqtt_message{topic = Topic, payload = Payload}, _Env) ->
+    io:format("client ~p acked.\r~n", [ClientId]),
+%    {ok,Message}.
+    case binary_to_term(Payload) of
+                 CLIENT=#client{}    -> n2o_proto(CLIENT,ClientId,Topic);
+                 PICK=#pickle{}      -> n2o_proto(PICK,ClientId,Topic);
+                 FTP=#ftp{}          -> n2o_proto(FTP,ClientId,Topic);
+                 Q                   -> {stop,Message} end.
 
 unload() ->
     emqttd:unhook('client.connected',     fun ?MODULE:on_client_connected/3),
@@ -192,19 +160,19 @@ error(Class, Error) -> ?ERRORING:error_page(Class, Error).
 
 % Formatter
 
-format(Term) -> format(Term,?CTX#cx.formatter).
+format(Term) -> format(Term,application:get_env(n2o,formatter,bert)).
 format(Message, Formatter) -> n2o_format:format(Message, Formatter).
 
 % Cache facilities n2o:cache/[1,2,3]
 
 proc(init,#handler{}=Async) ->
-    io:format("Proc Init: ~p~n",[init]),
+    io:format("Proc Init: ~p\r~n",[init]),
     Timer = timer_restart(ping()),
     {ok,Async#handler{state=Timer}};
 
 proc({timer,ping},#handler{state=Timer}=Async) ->
     case Timer of undefined -> skip; _ -> erlang:cancel_timer(Timer) end,
-    io:format("n2o Timer: ~p~n",[ping]),
+    io:format("n2o Timer: ~p\r~n",[ping]),
     n2o:invalidate_cache(),
     {reply,ok,Async#handler{state=timer_restart(ping())}}.
 
@@ -233,7 +201,7 @@ cache(Key) ->
 % Context Variables and URL Query Strings from ?REQ and ?CTX n2o:q/1 n2o:qc/[1,2]
 
 q(Key) -> Val = get(Key), case Val of undefined -> qc(Key); A -> A end.
-qc(Key) -> qc(Key,?CTX).
+qc(Key) -> CX = get(context), qc(Key,CX).
 qc(Key,Ctx) -> proplists:get_value(iolist_to_binary(Key),Ctx#cx.params).
 
 atom(List) when is_list(List) -> list_to_atom(string:join([ lists:concat([L]) || L <- List],"_"));
@@ -255,14 +223,6 @@ keyset(Name,Pos,List,New) ->
 actions() -> get(actions).
 actions(Ac) -> put(actions,Ac).
 
-context() -> get(context).
-context(Cx) -> put(context,Cx).
-context(Cx,Proto) -> lists:keyfind(Proto,1,Cx#cx.state).
-context(Cx,Proto,UserCx) ->
-   NewCx = Cx#cx{state=n2o:keyset(Proto,1,Cx#cx.state,{Proto,UserCx})},
-   n2o:context(NewCx),
-   NewCx.
-
 clear_actions() -> put(actions,[]).
 add_action(Action) ->
     Actions = case get(actions) of undefined -> []; E -> E end,
@@ -282,7 +242,7 @@ stack_trace(Error, Reason) ->
     [Error, Reason, Stacktrace].
 
 error_page(Class,Error) ->
-    io_lib:format("ERROR:  ~w:~w~n~n",[Class,Error]) ++
+    io_lib:format("ERROR:  ~w:~w\r~n\r~n",[Class,Error]) ++
     "STACK: " ++
     [ io_lib:format("\t~w:~w/~w:~w\n",
         [ Module,Function,Arity,proplists:get_value(line, Location) ])

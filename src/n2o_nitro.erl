@@ -20,13 +20,12 @@ info({init,_Rest},Req,State = #cx{module = Module}) ->
                           io:format("Event Init: ~p:~p~n~p~n",Error),
                           {stack,Error} end,
              {reply,n2o:format({io,render_actions(n2o:actions()),<<>>}),
-                    Req,n2o:context(State,?MODULE,{init,UserCx})};
+                    Req,State};
         {error,E} ->
              {reply,n2o:format({io,<<>>,E}),
-                    Req,n2o:context(State,?MODULE,{error,E})} end;
+                    Req,State} end;
 
 info({client,Message}, Req, State) ->
-%    io:format("Client Message: ~p",[Message]),
     Module = State#cx.module,
     Reply = try Module:event({client,Message})
           catch E:R -> Error = wf:stack(E,R),
@@ -41,12 +40,11 @@ info({pickle,_,_,_}=Event, Req, State) ->
                         {io,render_actions(n2o:actions()),Stack} end,
 
     {reply,n2o:format(Result),
-           Req,n2o:context(State,?MODULE,{pickle,Result})};
+           Req,State};
 
 info({flush,Actions}, Req, State) ->
     n2o:actions([]),
     Render = iolist_to_binary(render_actions(Actions)),
-%    io:format("Flush Message: ~tp",[Render]),
     {reply,n2o:format({io,Render,<<>>}),Req, State};
 
 info({direct,Message}, Req, State) ->
@@ -57,7 +55,7 @@ info({direct,Message}, Req, State) ->
                         io:format("Catch: ~p:~p~n~p", Stack),
                         {stack,Stack} end,
     {reply,n2o:format({io,render_actions(n2o:actions()),<<>>}),
-           Req,n2o:context(State,?MODULE,Result)};
+           Req,State};
 
 info(Message,Req,State) -> {unknown,Message,Req,State}.
 
@@ -68,20 +66,26 @@ render_actions(Actions) ->
     First  = n2o:render(Actions),
     Second = n2o:render(n2o:actions()),
     n2o:actions([]),
+    io:format("\r~nACTIONS: ~tp\r~n",[iolist_to_binary([First,Second])]),
     [First,Second].
 
 % n2o events
 
 html_events({pickle,Source,Pickled,Linked}=Pickle, State) ->
-%    io:format("Pickle: ~tp",[Pickle]),
+    io:format("Pickle: ~tp",[Pickle]),
     Ev = n2o:depickle(Pickled),
     case Ev of
          #ev{} -> render_ev(Ev,Source,Linked,State);
          CustomEnvelop -> io:format("EV expected: ~p~n",[CustomEnvelop]) end,
     {io,render_actions(n2o:actions()),<<>>}.
 
-render_ev(#ev{module=M,name=F,msg=P,trigger=T},_Source,Linked,State) ->
+render_ev(#ev{name=F,msg=P,trigger=T},_Source,Linked,State) ->
+    #cx{module=M} = get(context),
+    io:format("\r~nEV MODULE: ~tp\~n",[{M,F,Linked}]),
     case F of
          api_event -> M:F(P,Linked,State);
-         event -> lists:map(fun({K,V})-> put(K,nitro:to_binary(V)) end,Linked), M:F(P);
+         event -> lists:map(fun({K,V})-> put(K,nitro:to_binary(V)) end,Linked),
+                  X = M:F(P),
+                 io:format("\r~nPAGE RES: ~tp\~n",[X]),
+                  X;
          _UserCustomEvent -> M:F(P,T,State) end.

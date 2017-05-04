@@ -10,7 +10,6 @@
 io(Data)     -> iolist_to_binary(Data).
 bin(Data)    -> Data.
 list(Data)   -> binary_to_list(term_to_binary(Data)).
-format(Term) -> format(Term,?CTX#cx.formatter).
 
 % JSON Encoder
 
@@ -44,7 +43,7 @@ format({Atom,Data}, bert) ->
 format(#ftp{}=FTP, bert) ->
 %    io:format("BERT {ftp,_,_,_,_,_,_,_,_,_,_,_,_}: ~tp~n",
 %             [FTP#ftp{data= <<>>}]),
-    {binary,term_to_binary(FTP)};
+    {binary,term_to_binary(setelement(1,FTP,ftpack))};
 
 format(Term, bert) ->
     {binary,term_to_binary(Term)};

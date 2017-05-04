@@ -5,8 +5,8 @@
 -record(handler, { name, module, class, group, config, state}).
 -record(cx,      { handlers, actions, req, module, lang, path, session, formatter=false, params, form, state=[] }).
 
--define(CTX, (get(context))).
--define(REQ, (get(context))#cx.req).
+-define(CTX(ClientId), n2o:cache(ClientId)).
+-define(REQ(ClientId), (n2o:cache(ClientId))#cx.req).
 
 % API
 
@@ -32,5 +32,6 @@
 % File Transfer Protocol
 
 -record(ftp,     { id, sid, filename, meta, size, offset, block, data, status }).
+-record(ftpack,  { id, sid, filename, meta, size, offset, block, data, status }).
 
 -endif.

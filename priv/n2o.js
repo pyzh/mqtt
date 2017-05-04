@@ -25,7 +25,7 @@ var $io = {}; $io.on = function onio(r, cb) {
 }
 
 var $file = {}; $file.on = function onfile(r, cb) {
-    if (is(r, 10, 'ftp')) {
+    if (is(r, 10, 'ftpack')) {
         if (typeof cb == 'function') cb(r); return { status: "ok" };
     } else return { status: '' };
 }
