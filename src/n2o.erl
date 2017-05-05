@@ -181,10 +181,10 @@ ping() -> application:get_env(n2o,timer,{0,10,0}).
 
 invalidate_cache() -> ets:foldl(fun(X,_) -> n2o:cache(element(1,X)) end, 0, caching).
 
-ttl() -> application:get_env(n2o,ttl,60*15).
+ttl() -> application:get_env(n2o,ttl,60*1).
 till(Now,TTL) ->
     calendar:gregorian_seconds_to_datetime(
-        calendar:datetime_to_gregorian_seconds(Now) + TTL).
+        calendar:datetime_to_gregorian_seconds(Now) + TTL), infinity.
 
 cache(Key, undefined) -> ets:delete(caching,Key);
 cache(Key, Value) -> ets:insert(caching,{Key,till(calendar:local_time(), ttl()),Value}), Value.
