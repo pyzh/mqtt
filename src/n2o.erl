@@ -252,7 +252,7 @@ user() -> case session(<<"user">>) of undefined -> []; E -> nitro:to_list(E) end
 user(User) -> session(<<"user">>,User).
 
 -ifndef(SESSION).
--define(SESSION, (application:get_env(n2o,session,n2o))).
+-define(SESSION, n2o).
 -endif.
 
 session(Key) -> ?SESSION:get_value(Key,undefined).
