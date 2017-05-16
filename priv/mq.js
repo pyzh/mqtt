@@ -24,7 +24,7 @@ var ws = {
     send: function (payload) {
         var message = new Paho.MQTT.Message(payload);
         message.destinationName = topic;
-        message.qos = 2;
+        message.qos = 1;
         mqtt.send(message);
     }
 };
