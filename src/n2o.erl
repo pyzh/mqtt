@@ -82,7 +82,7 @@ on_session_subscribed(ClientId, Username, {Topic, Opts}, _Env) ->
     n2o:cache(ClientId,Cx),
     case n2o_proto:info({init,<<>>},[],?CTX(ClientId)) of
          {reply, {binary, M}, _, _} ->
-              Msg = emqttd_message:make(Name, 0, BinTopic, M),
+              Msg = emqttd_message:make(Name, 1, BinTopic, M),
               io:format("N2O, ~p MOD ~p LOGIN: ~p\r~n",[ClientId, Module, self()]),
               emqttd:publish(Msg);
          _ -> skip end,
@@ -109,7 +109,7 @@ n2o_proto(Res,ClientId,Topic) ->
              {ok, emqttd_message:make(ClientId, 0, Topic, <<>>)};
          {reply, {binary, M}, _, _} ->
              io:format("PROTO: ~p\r~n",[{ClientId,Topic}]),
-             Msg = emqttd_message:make(ClientId, 0, Topic, M),
+             Msg = emqttd_message:make(ClientId, 2, Topic, M),
              emqttd:publish(Msg),
              {ok, emqttd_message:make(ClientId, 0, Topic, M)};
          W ->
