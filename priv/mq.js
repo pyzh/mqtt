@@ -5,7 +5,7 @@ params = {}; while (match = search.exec(query)) params[decode(match[1])] = decod
 l = location.pathname;
 x = l.substring(l.lastIndexOf("/") + 1);
 module = x.substring(0, x.lastIndexOf("."));
-var topic = module + "_" + params.room || "lobby";
+var topic = module + "_" + params.room || "lobby"; // nynja://root/user/:name/actions
 console.log("Room: " + topic);
 var mqtt = new Paho.MQTT.Client(host, 8083, '');
 var subscribeOptions = {
@@ -23,7 +23,7 @@ var options = {
 var ws = {
     send: function (payload) {
         var message = new Paho.MQTT.Message(payload);
-        message.destinationName = topic;
+        message.destinationName = topic; // nynja://root/user/:name/events
         message.qos = 1;
         mqtt.send(message);
     }

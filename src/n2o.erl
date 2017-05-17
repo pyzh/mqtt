@@ -39,6 +39,8 @@ init([])   -> [ ets:new(T,opt()) || T <- tables() ],
 
 on_client_connected(ConnAck, Client = #mqtt_client{client_id = ClientId}, _Env) ->
     io:format("client ~s connected, connack: ~w\r~n", [ClientId, ConnAck]),
+    % 1. retrive from kvs subscription list (friends, rooms)
+    % 2. perform MQTT subscription on this list + user/:name/events
     {ok, Client}.
 
 on_client_disconnected(Reason, _Client = #mqtt_client{client_id = ClientId}, _Env) ->
@@ -84,7 +86,7 @@ on_session_subscribed(ClientId, Username, {Topic, Opts}, _Env) ->
          {reply, {binary, M}, _, _} ->
               Msg = emqttd_message:make(Name, 1, BinTopic, M),
               io:format("N2O, ~p MOD ~p LOGIN: ~p\r~n",[ClientId, Module, self()]),
-              emqttd:publish(Msg);
+              emqttd:publish(Msg); % nynja://root/user/:name/actions
          _ -> skip end,
     {ok, {Topic, Opts}}.
 
@@ -110,7 +112,7 @@ n2o_proto(Res,ClientId,Topic) ->
          {reply, {binary, M}, _, _} ->
              io:format("PROTO: ~p\r~n",[{ClientId,Topic}]),
              Msg = emqttd_message:make(ClientId, 2, Topic, M),
-             emqttd:publish(Msg),
+             emqttd:publish(Msg), % nynja://root/user/:name/actions
              {ok, emqttd_message:make(ClientId, 0, Topic, M)};
          W ->
              {ok, emqttd_message:make(ClientId, 0, Topic, <<>>)}
