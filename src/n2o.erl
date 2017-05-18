@@ -124,12 +124,7 @@ on_message_delivered(ClientId, _Username, Message = #mqtt_message{topic = Topic,
 
 on_message_acked(ClientId, Username, Message = #mqtt_message{topic = Topic, payload = Payload}, _Env) ->
     io:format("client ~p acked.\r~n", [ClientId]),
-%    {ok,Message}.
-    case binary_to_term(Payload) of
-                 CLIENT=#client{}    -> n2o_proto(CLIENT,ClientId,Topic);
-                 PICK=#pickle{}      -> n2o_proto(PICK,ClientId,Topic);
-                 FTP=#ftp{}          -> n2o_proto(FTP,ClientId,Topic);
-                 Q                   -> {stop,Message} end.
+    n2o_proto(binary_to_term(Payload),ClientId,Topic).
 
 unload() ->
     emqttd:unhook('client.connected',     fun ?MODULE:on_client_connected/3),
