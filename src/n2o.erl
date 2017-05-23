@@ -37,10 +37,13 @@ start(_,_) -> load([]), X = supervisor:start_link({local,n2o},n2o, []),
 init([])   -> [ ets:new(T,opt()) || T <- tables() ],
               { ok, { { one_for_one, 5, 10 }, [] } }.
 
-on_client_connected(ConnAck, Client = #mqtt_client{client_id = ClientId}, _Env) ->
-    io:format("client ~s connected, connack: ~w\r~n", [ClientId, ConnAck]),
+on_client_connected(ConnAck, Client = #mqtt_client{client_id = ClientId, ws_initial_headers = Header}, Env) ->
+    io:format("client ~s connected, connack: ~w\r~n", [ClientId, {ConnAck, Env}]),
     % 1. retrive from kvs subscription list (friends, rooms)
     % 2. perform MQTT subscription on this list + user/:name/events
+
+%%    io:format("Headers: ~p~n", [Header]),
+    emqttd:subscribe(<<"+/events">>, ClientId),
     {ok, Client}.
 
 on_client_disconnected(Reason, _Client = #mqtt_client{client_id = ClientId}, _Env) ->
@@ -84,7 +87,8 @@ on_session_subscribed(ClientId, Username, {Topic, Opts}, _Env) ->
     n2o:cache(ClientId,Cx),
     case n2o_proto:info({init,<<>>},[],?CTX(ClientId)) of
          {reply, {binary, M}, _, _} ->
-              Msg = emqttd_message:make(Name, 1, BinTopic, M),
+              ActionBinTopic = iolist_to_binary(string:join(lists:droplast(string:tokens(binary_to_list(Topic), "/"))++["actions"], "/")),
+              Msg = emqttd_message:make(Name, 1, ActionBinTopic, M),
               io:format("N2O, ~p MOD ~p LOGIN: ~p\r~n",[ClientId, Module, self()]),
               emqttd:publish(Msg); % nynja://root/user/:name/actions
          _ -> skip end,
@@ -111,10 +115,12 @@ n2o_proto(Res,ClientId,Topic) ->
              io:format("UNKOWN INCOME: ~p\r~n",[Res]),
              {ok, emqttd_message:make(ClientId, 0, Topic, <<>>)};
          {reply, {binary, M}, _, _} ->
-             io:format("PROTO: ~p\r~n",[{ClientId,Topic}]),
-             Msg = emqttd_message:make(ClientId, 2, Topic, M),
-             emqttd:publish(Msg), % nynja://root/user/:name/actions
-             {ok, emqttd_message:make(ClientId, 0, Topic, M)};
+              ActionTopic = iolist_to_binary(string:join(lists:droplast(string:tokens(binary_to_list(Topic), "/"))++["actions"], "/")),
+              io:format("PROTO: ~p~n",[{ClientId,Topic, ActionTopic}]),
+%%             Msg = emqttd_message:make(ClientId, 2, Topic, M),
+              Msg = emqttd_message:make(ClientId, 2, ActionTopic, M),
+              emqttd:publish(Msg), % nynja://root/user/:name/actions
+              {ok, emqttd_message:make(ClientId, 0, ActionTopic, M)};
          W ->
               io:format("UNKOWN OUTCOME: ~p\r~n",[W]),
               {ok, emqttd_message:make(ClientId, 0, Topic, <<>>)}
