@@ -2,31 +2,53 @@
 -compile(export_all).
 
 
-authenticate(ClientSessionId,ClientSessionToken) ->
-    io:format("Session Init ClientId ~p: Token ~p~n",[ClientSessionId,ClientSessionToken]),
-    Lookup = lookup_ets({ClientSessionToken,<<"auth">>}),
+authenticate(ClientSessionId, ClientSessionToken) ->
+    io:format("Session Init ~nClientId ~p: Token ~p~n~n", [ClientSessionId, ClientSessionToken]),
     Expiration = till(calendar:local_time(), ttl()),
-    SessionToken = case Lookup of
-        undefined ->
-            Token = {{generate_sid(),<<"auth">>},os:timestamp(),Expiration},
+    Response = case ClientSessionToken of
+        [] ->
+            NewSID = generate_sid(),
+            ClientToken = encode_token(NewSID),
+            io:format("1 ~p~n~n", [ClientToken]),
+            Token = {{NewSID,<<"auth">>},os:timestamp(),Expiration},
             ets:insert(cookies,Token),
-            io:format("Auth Token New: ~p~n", [Token]),
-            Token;
-        {{TokenValue,Key},Issued,Till} ->
-            case expired(Issued,Till) of
-                false ->
-                    Token = {{TokenValue,Key},Issued,Till},
-                    io:format("Auth Token Ok: ~p~n", [Token]),
-                    Token;
-                true ->
-                    Token = {{generate_sid(),<<"auth">>},os:timestamp(),Expiration},
-                    delete_old_token(TokenValue),
-                    ets:insert(cookies,Token),
-                    io:format("Auth Token Expired: ~p~nGenerated new token ~p~n", [TokenValue, Token]),
-                    Token end;
-        What -> io:format("Auth Cookie Error: ~p~n",[What])
-    end,
-    {ok, SessionToken}.
+            io:format("Auth Token New: ~p~n~p~n~n", [Token, ClientToken]),
+            {ok, ClientToken};
+        ExistingToken ->
+            SessionId = decode_token(ClientSessionToken),
+            case SessionId of
+                undefined -> {fail, "Invalid token signature"};
+                Val ->
+                 Lookup = lookup_ets({SessionId,<<"auth">>}),
+                 InnerResponse = case Lookup of
+                    undefined -> {fail, "Invalid authentication token"};
+                    {{TokenValue,Key},Issued,Till} ->
+                        case expired(Issued,Till) of
+                            false ->
+                                Token = {{TokenValue,Key},Issued,Till},
+                                io:format("Auth Token Ok: ~p~n", [Token]),
+                                {ok, ExistingToken};
+                            true ->
+                                UpdatedSID = generate_sid(),
+                                UpdatedClientToken = encode_token(UpdatedSID),
+                                Token = {{UpdatedSID,<<"auth">>},os:timestamp(),Expiration},
+                                delete_old_token(TokenValue),
+                                ets:insert(cookies,Token),
+                                io:format("Auth Token Expired: ~p~nGenerated new token ~p~n", [TokenValue, Token]),
+                                {ok, UpdatedClientToken} end;
+                    What -> io:format("Auth Cookie Error: ~p~n",[What]), {fail, What} end,
+             InnerResponse end
+        end,
+    Response.
+
+encode_token(Data) ->
+    n2o_secret:pickle(Data).
+
+decode_token(Data) ->
+    Res = n2o_secret:depickle(Data),
+    case Res of
+        <<>> -> undefined;
+        Value -> Value end.
 
 expired(_Issued,Till) -> Till < calendar:local_time().
 
