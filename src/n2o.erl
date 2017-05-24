@@ -37,18 +37,40 @@ start(_,_) -> load([]), X = supervisor:start_link({local,n2o},n2o, []),
 init([])   -> [ ets:new(T,opt()) || T <- tables() ],
               { ok, { { one_for_one, 5, 10 }, [] } }.
 
-on_client_connected(ConnAck, Client = #mqtt_client{client_id = ClientId, ws_initial_headers = Header}, Env) ->
-    io:format("client ~s connected, connack: ~w\r~n", [ClientId, {ConnAck, Env}]),
+on_client_connected(ConnAck, Client = #mqtt_client{client_id = ClientId,
+                                                   client_pid = ClientPid,
+                                                   username   = Username}, Env) ->
+    io:format("~n~nclient [~s] connected, connack: ~w\r~n", [ClientId, {Username, ConnAck, Env}]),
     % 1. retrive from kvs subscription list (friends, rooms)
     % 2. perform MQTT subscription on this list + user/:name/events
 
 %%    io:format("Headers: ~p~n", [Header]),
-    emqttd:subscribe(<<"+/events">>, ClientId),
+%%    emqttd:subscribe(<<"+/events">>, ClientId),
+%%    Session = iolist_to_binary("session/"++binary_to_list(ClientId)++"/events"),
+%%    emqttd:subscribe(Session, ClientId),
+%%    {_, NPid, _} = emqttd_guid:new(),
+%%    ClientId = iolist_to_binary(["emqttd_", integer_to_list(NPid)]),
+
+    Replace = fun(Topic) -> rep(<<"%u">>, Username, rep(<<"%c">>, ClientId, Topic)) end,
+%%    Topics = [{<<"user/%u/%c/events">>, 2}, {<<"user/%u/%c/actions">>, 0}],
+    Topics = [{<<"user/%u/%c/actions">>, 0}],
+    TopicTable = [{Replace(Topic), Qos} || {Topic, Qos} <- Topics],
+    io:format("TopicTable: ~p~n", [TopicTable]),
+    ClientPid ! {subscribe, TopicTable},
     {ok, Client}.
 
 on_client_disconnected(Reason, _Client = #mqtt_client{client_id = ClientId}, _Env) ->
     io:format("client ~s disconnected, reason: ~w\r~n", [ClientId, Reason]),
     ok.
+
+
+rep(<<"%c">>, ClientId, Topic) ->
+  emqttd_topic:feed_var(<<"%c">>, ClientId, Topic);
+rep(<<"%u">>, undefined, Topic) ->
+  emqttd_topic:feed_var(<<"%u">>, <<"anon">>, Topic);
+rep(<<"%u">>, Username, Topic) ->
+  emqttd_topic:feed_var(<<"%u">>, Username, Topic).
+
 
 send(X,Y) -> gproc:send({p,l,X},Y).
 reg(Pool) -> reg(Pool,undefined).
@@ -89,6 +111,7 @@ on_session_subscribed(ClientId, Username, {Topic, Opts}, _Env) ->
          {reply, {binary, M}, _, _} ->
               ActionBinTopic = iolist_to_binary(string:join(lists:droplast(string:tokens(binary_to_list(Topic), "/"))++["actions"], "/")),
               Msg = emqttd_message:make(Name, 1, ActionBinTopic, M),
+%%              Msg = emqttd_message:make(Name, 1, BinTopic, M),
               io:format("N2O, ~p MOD ~p LOGIN: ~p\r~n",[ClientId, Module, self()]),
               emqttd:publish(Msg); % nynja://root/user/:name/actions
          _ -> skip end,

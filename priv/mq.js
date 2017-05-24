@@ -6,10 +6,13 @@ l = location.pathname;
 x = l.substring(l.lastIndexOf("/") + 1);
 module = x.substring(0, x.lastIndexOf("."));
 var topic = module + "_" + params.room || "lobby"; // nynja://root/user/:name/actions
+var topic = "user/anon/"
 var action_topic = topic + "/actions"
 var event_topic = topic + "/events"
 console.log("Room: " + topic);
 var mqtt = new Paho.MQTT.Client(host, 8083, '');
+var clientId = '';
+
 var subscribeOptions = {
     qos: 0,  // QoS
     invocationContext: { foo: true },  // Passed to success / failure callback
@@ -28,7 +31,8 @@ var options = {
 var ws = {
     send: function (payload) {
         var message = new Paho.MQTT.Message(payload);
-        message.destinationName = event_topic; // nynja://root/user/:name/events
+        message.destinationName = topic + clientId + "/event"
+//        message.destinationName = event_topic; // nynja://root/user/:name/events
         message.qos = 2;
         mqtt.send(message);
     }
@@ -37,11 +41,17 @@ var ws = {
 function MQTT_start() {
     mqtt.onConnectionLost = function (o) { console.log("connection lost: " + o.errorMessage); };
     mqtt.onMessageArrived = function (m) {
+        words = m.destinationName.split("/");
+        if (mqtt.clientId == '' && clientId == '' && words[0] == "user") {
+            clientId = words[2];
+        }
+
         var BERT = m.payloadBytes.buffer.slice(m.payloadBytes.byteOffset,
             m.payloadBytes.byteOffset + m.payloadBytes.length);
         try {
             erlang = dec(BERT);
-            console.log(erlang);
+            console.log(m.destinationName);
+//            console.log(erlang);
             for (var i = 0; i < $bert.protos.length; i++) {
                 p = $bert.protos[i]; if (p.on(erlang, p.do).status == "ok") return;
             }

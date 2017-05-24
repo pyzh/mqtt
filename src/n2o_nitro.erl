@@ -19,6 +19,7 @@ info({init,_Rest},Req,State = #cx{module = Module}) ->
              catch C:E -> Error = n2o:stack(C,E),
                           io:format("Event Init: ~p:~p~n~p~n",Error),
                           {stack,Error} end,
+             io:format("!!!!!!!!!!!!!!!!info: ~p~n", [iolist_to_binary(render_actions(n2o:actions()))]),
              {reply,n2o:format({io,render_actions(n2o:actions()),<<>>}),
                     Req,State};
         {error,E} ->
