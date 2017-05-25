@@ -53,7 +53,9 @@ on_client_connected(ConnAck, Client = #mqtt_client{client_id = ClientId,
 
     Replace = fun(Topic) -> rep(<<"%u">>, Username, rep(<<"%c">>, ClientId, Topic)) end,
 %%    Topics = [{<<"user/%u/%c/events">>, 2}, {<<"user/%u/%c/actions">>, 0}],
-    Topics = [{<<"user/%u/%c/actions">>, 0}],
+    Msg = emqttd_message:make(ClientId, <<"user/%u/%c/events">>, term_to_binary([])),
+    emqttd:publish(Msg),
+    Topics = [{<<"actions/index/user/%u/%c">>, 0}],
     TopicTable = [{Replace(Topic), Qos} || {Topic, Qos} <- Topics],
     io:format("TopicTable: ~p~n", [TopicTable]),
     ClientPid ! {subscribe, TopicTable},
@@ -79,11 +81,24 @@ reg(X,Y) ->
          undefined -> gproc:reg({p,l,X},Y), cache({pool,X},X);
                  _ -> skip end.
 
-select(Topic) -> {SelectModule,Function} = application:get_env(n2o,select,{n2o,select}),
-    [Module,Room] = case string:tokens(binary_to_list(iolist_to_binary(Topic)),"_") of
-         [M,R] -> [M,R];
-           [A] -> ["index",A];
-            [] -> ["index","lobby"] end, SelectModule:Function(Module,Room).
+select(Topic) ->
+    {SelectModule,Function} = application:get_env(n2o,select,{n2o,select}),
+    BinTopic = iolist_to_binary(Topic),
+    Words = emqttd_topic:words(BinTopic),
+    [Module, Room] =
+        case Words of
+            [<<"actions">>, M, R|_] ->
+%%                put(topic,BinTopic),
+                [binary_to_list(M), R];
+            [A] -> ["index", A];
+            [] -> ["index", "lobby"];
+            _ -> ["index", "lobby"]
+        end,
+    SelectModule:Function(Module,Room).
+%%    [Module,Room] = case string:tokens(binary_to_list(iolist_to_binary(Topic)),"_") of
+%%         [M,R] -> [M,R];
+%%           [A] -> ["index",A];
+%%            [] -> ["index","lobby"] end, SelectModule:Function(Module,Room).
 
 select(Module,Room) -> [list_to_atom(Module),Room].
 
@@ -98,6 +113,24 @@ on_client_unsubscribe(ClientId, Username, TopicTable, _Env) ->
 on_session_created(ClientId, Username, _Env) ->
     io:format("session(~s/~s) created.", [ClientId, Username]).
 
+%%on_session_subscribed(ClientId, Username, {<<"actions/", RestTopic/binary>> = Topic, Opts}, _Env) ->
+%%    io:format("session ~p ~p subscribed: ~p\r~n", [ClientId, self(), Topic]),
+%%    Name = iolist_to_binary(ClientId),
+%%    BinTopic = iolist_to_binary(Topic), %element(1,hd(TopicTable)),
+%%    put(topic,BinTopic),
+%%    [Module,Room] = select(BinTopic),
+%%    Cx = #cx{module=Module,session=ClientId,req=self(),formatter=bert,params=[]},
+%%    put(context,Cx),
+%%    n2o:cache(ClientId,Cx),
+%%    case n2o_proto:info({init,<<>>},[],?CTX(ClientId)) of
+%%        {reply, {binary, M}, _, _} ->
+%%%%            ActionBinTopic = iolist_to_binary(string:join(lists:droplast(string:tokens(binary_to_list(Topic), "/"))++["actions"], "/")),
+%%%%            Msg = emqttd_message:make(Name, 1, ActionBinTopic, M),
+%%            Msg = emqttd_message:make(Name, 1, BinTopic, M),
+%%            io:format("N2O, ~p MOD ~p LOGIN: ~p\r~n",[ClientId, Module, self()]),
+%%            emqttd:publish(Msg); % nynja://root/user/:name/actions
+%%        _ -> skip end,
+%%    {ok, {Topic, Opts}};
 on_session_subscribed(ClientId, Username, {Topic, Opts}, _Env) ->
     io:format("session ~p ~p subscribed: ~p\r~n", [ClientId, self(), Topic]),
     Name = iolist_to_binary(ClientId),
@@ -109,11 +142,12 @@ on_session_subscribed(ClientId, Username, {Topic, Opts}, _Env) ->
     n2o:cache(ClientId,Cx),
     case n2o_proto:info({init,<<>>},[],?CTX(ClientId)) of
          {reply, {binary, M}, _, _} ->
-              ActionBinTopic = iolist_to_binary(string:join(lists:droplast(string:tokens(binary_to_list(Topic), "/"))++["actions"], "/")),
-              Msg = emqttd_message:make(Name, 1, ActionBinTopic, M),
-%%              Msg = emqttd_message:make(Name, 1, BinTopic, M),
+%%              ActionBinTopic = iolist_to_binary(string:join(lists:droplast(string:tokens(binary_to_list(Topic), "/"))++["actions"], "/")),
+%%              Msg = emqttd_message:make(Name, 1, ActionBinTopic, M),
+              Msg = emqttd_message:make(Name, 1, BinTopic, M),
               io:format("N2O, ~p MOD ~p LOGIN: ~p\r~n",[ClientId, Module, self()]),
               emqttd:publish(Msg); % nynja://root/user/:name/actions
+%%              ok;
          _ -> skip end,
     {ok, {Topic, Opts}}.
 
@@ -128,6 +162,7 @@ on_message_publish(Message = #mqtt_message{topic = <<"$SYS/", _/binary>>}, _) ->
     {ok, Message};
 
 on_message_publish(Message = #mqtt_message{topic = Topic, from=From, payload = Payload}, _Env) ->
+    io:format("on_message_publish: ~p~n", [{Topic, From, self()}]),
     {ok, Message}.
 
 n2o_proto(Res,ClientId,Topic) ->
@@ -139,7 +174,7 @@ n2o_proto(Res,ClientId,Topic) ->
              {ok, emqttd_message:make(ClientId, 0, Topic, <<>>)};
          {reply, {binary, M}, _, _} ->
               ActionTopic = iolist_to_binary(string:join(lists:droplast(string:tokens(binary_to_list(Topic), "/"))++["actions"], "/")),
-              io:format("PROTO: ~p~n",[{ClientId,Topic, ActionTopic}]),
+              io:format("PROTO: ~p~n",[{ClientId,Topic, ActionTopic, self()}]),
 %%             Msg = emqttd_message:make(ClientId, 2, Topic, M),
               Msg = emqttd_message:make(ClientId, 2, ActionTopic, M),
               emqttd:publish(Msg), % nynja://root/user/:name/actions
