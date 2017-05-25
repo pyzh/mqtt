@@ -77,7 +77,7 @@ generate_sid() ->
 session_id() -> get(session_id).
 
 invalidate_sessions() ->
-    ets:foldl(fun(X,A) -> {Sid,Key} = element(1,X), n2o_session:get_value(Sid,Key,undefined), A end, 0, cookies).
+    ets:foldl(fun(X,A) -> {Sid,Key} = element(1,X), get_value(Sid,Key,undefined), A end, 0, cookies).
 
 get_value(Key, DefaultValue) ->
     get_value(session_id(), Key, DefaultValue).
