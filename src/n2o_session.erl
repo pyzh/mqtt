@@ -1,7 +1,6 @@
 -module(n2o_session).
 -compile(export_all).
 
-
 authenticate(ClientSessionId, ClientSessionToken) ->
     io:format("Session Init ~nClientId ~p: Token ~p~n~n", [ClientSessionId, ClientSessionToken]),
     Expiration = till(calendar:local_time(), ttl()),
@@ -21,7 +20,7 @@ authenticate(ClientSessionId, ClientSessionToken) ->
                 Val ->
                  Lookup = lookup_ets({SessionId,<<"auth">>}),
                  InnerResponse = case Lookup of
-                    undefined -> {fail, "Invalid authentication token"};
+                    [] -> {fail, "Invalid authentication token"};
                     {{TokenValue,Key},Issued,Till} ->
                         case expired(Issued,Till) of
                             false ->
@@ -47,7 +46,7 @@ encode_token(Data) ->
 decode_token(Data) ->
     Res = n2o_secret:depickle(Data),
     case Res of
-        <<>> -> undefined;
+        <<>> -> [];
         Value -> Value end.
 
 expired(_Issued,Till) -> Till < calendar:local_time().
@@ -56,7 +55,7 @@ lookup_ets(Key) ->
     Res = ets:lookup(cookies,Key),
     io:format("Lookup ETS: ~p~n",[{Res,Key}]),
     case Res of
-         [] -> undefined;
+         [] -> [];
          [Value] -> Value;
          Values -> Values end.
 
@@ -77,15 +76,21 @@ generate_sid() ->
 session_id() -> get(session_id).
 
 invalidate_sessions() ->
-    ets:foldl(fun(X,A) -> {Sid,Key} = element(1,X), get_value(Sid,Key,undefined), A end, 0, cookies).
+    ets:foldl(fun(X,A) -> {Sid,Key} = element(1,X), get_value(Sid,Key,[]), A end, 0, cookies).
 
 get_value(Key, DefaultValue) ->
     get_value(session_id(), Key, DefaultValue).
 
 get_value(SID, Key, DefaultValue) ->
     Res = case lookup_ets({SID,Key}) of
-               undefined -> DefaultValue;
+               [] -> DefaultValue;
                {{SID,Key},_,Issued,Till,Value} -> case expired(Issued,Till) of
                        false -> Value;
                        true -> ets:delete(cookies,{SID,Key}), DefaultValue end end,
     Res.
+
+test() ->
+  {ok,B}=n2o_session:authenticate("",""),
+  32=size(n2o_session:decode_token(B)),
+  {ok,C}=n2o_session:authenticate("",B),
+  true=(C==B).
