@@ -71,7 +71,7 @@ till(Now,TTL) ->
         calendar:datetime_to_gregorian_seconds(Now) + TTL).
 
 generate_sid() ->
-    wf_convert:hex(binary:part(crypto:hmac(application:get_env(n2o,hmac,sha256),
+    nitro_conv:hex(binary:part(crypto:hmac(application:get_env(n2o,hmac,sha256),
          n2o_secret:secret(),term_to_binary(os:timestamp())),0,16)).
 
 session_id() -> get(session_id).
