@@ -123,49 +123,14 @@ on_client_unsubscribe(ClientId, Username, TopicTable, _Env) ->
 on_session_created(ClientId, Username, _Env) ->
     io:format("session(~p/~s) created.", [{get_client_id(), ClientId, self()}, Username]).
 
-%%on_session_subscribed(ClientId, Username, {<<"actions/", RestTopic/binary>> = Topic, Opts}, _Env) ->
-%%    io:format("session ~p ~p subscribed: ~p\r~n", [ClientId, self(), Topic]),
-%%    Name = iolist_to_binary(ClientId),
-%%    BinTopic = iolist_to_binary(Topic), %element(1,hd(TopicTable)),
-%%    put(topic,BinTopic),
-%%    [Module,Room] = select(BinTopic),
-%%    Cx = #cx{module=Module,session=ClientId,req=self(),formatter=bert,params=[]},
-%%    put(context,Cx),
-%%    n2o:cache(ClientId,Cx),
-%%    case n2o_proto:info({init,<<>>},[],?CTX(ClientId)) of
-%%        {reply, {binary, M}, _, _} ->
-%%%%            ActionBinTopic = iolist_to_binary(string:join(lists:droplast(string:tokens(binary_to_list(Topic), "/"))++["actions"], "/")),
-%%%%            Msg = emqttd_message:make(Name, 1, ActionBinTopic, M),
-%%            Msg = emqttd_message:make(Name, 1, BinTopic, M),
-%%            io:format("N2O, ~p MOD ~p LOGIN: ~p\r~n",[ClientId, Module, self()]),
-%%            emqttd:publish(Msg); % nynja://root/user/:name/actions
-%%        _ -> skip end,
-%%    {ok, {Topic, Opts}};
-
 on_session_subscribed(ClientId, Username, {<<"actions/init/", _/binary>> = Topic, Opts}, _Env) ->
     io:format("session ~p ~p subscribed: ~p\r~n", [ClientId, self(), Topic]),
     Msg = emqttd_message:make(ClientId, <<"actions/init/", ClientId/binary>>, term_to_binary([])),
     emqttd:publish(Msg),
     {ok, {Topic, Opts}};
+
 on_session_subscribed(ClientId, Username, {Topic, Opts}, _Env) ->
     io:format("session ~p ~p subscribed: ~p\r~n", [ClientId, self(), Topic]),
-
-%%    Name = iolist_to_binary(ClientId),
-%%    BinTopic = iolist_to_binary(Topic), %element(1,hd(TopicTable)),
-%%    put(topic,BinTopic),
-%%    [Module,Room] = select(BinTopic),
-%%    Cx = #cx{module=Module,session=ClientId,req=self(),formatter=bert,params=[]},
-%%    put(context,Cx),
-%%    n2o:cache(ClientId,Cx),
-%%    case n2o_proto:info({init,<<>>},[],?CTX(ClientId)) of
-%%         {reply, {binary, M}, _, _} ->
-%%%%              ActionBinTopic = iolist_to_binary(string:join(lists:droplast(string:tokens(binary_to_list(Topic), "/"))++["actions"], "/")),
-%%%%              Msg = emqttd_message:make(Name, 1, ActionBinTopic, M),
-%%              Msg = emqttd_message:make(Name, 1, BinTopic, M),
-%%              io:format("N2O, ~p MOD ~p LOGIN: ~p\r~n",[ClientId, Module, self()]),
-%%              emqttd:publish(Msg); % nynja://root/user/:name/actions
-%%%%              ok;
-%%         _ -> skip end,
     {ok, {Topic, Opts}}.
 
 on_session_unsubscribed(ClientId, Username, {Topic, Opts}, _Env) ->
@@ -191,8 +156,6 @@ on_message_publish(Message = #mqtt_message{topic = <<"events/", RestTopic/binary
         {From2, [Mod, U, ClientId] = RT, undefined} ->
             io:format("!!!!!!!!!on_message_publish: ~p~n", [RT]),
             ActionsTopic = emqttd_topic:join([<<"actions">>|RT]),
-%%            Name = iolist_to_binary(ClientId),
-%%            BinTopic = iolist_to_binary(Topic), %element(1,hd(TopicTable)),
             [Module, Room] = [erlang:binary_to_atom(Mod, utf8), <<"">>],
             put(topic, Room),
             Cx2 = #cx{module=Module,session=WsClientId,req=self(),formatter=bert,params=[]},
@@ -206,7 +169,6 @@ on_message_publish(Message = #mqtt_message{topic = <<"events/", RestTopic/binary
                     Msg = emqttd_message:make(WsClientId, 1, ActionsTopic, M),
                     io:format("N2O, ~p MOD ~p LOGIN: ~p\r~n",[ClientId, Module, self()]),
                     emqttd:publish(Msg); % nynja://root/user/:name/actions
-%%              ok;
                 _ -> skip end;
         _ ->
             ok

@@ -42,7 +42,7 @@ var ws = {
 //        message.destinationName = topic + clientId + "/event"
 //        message.destinationName = event_topic; // nynja://root/user/:name/events
         message.destinationName = get_topic("events");
-        message.qos = 2;
+        message.qos = 1;
         mqtt.send(message);
     }
 };
