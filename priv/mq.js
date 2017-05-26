@@ -17,7 +17,7 @@ var mqtt = new Paho.MQTT.Client(host, 8083, '');
 var clientId = '';
 
 function get_topic(prefix) {
-    return prefix + "/" + module + "/" + clientId;
+    return prefix + "/" + module + "/anon/" + clientId;
 }
 
 var subscribeOptions = {
@@ -51,8 +51,15 @@ function MQTT_start() {
     mqtt.onConnectionLost = function (o) { console.log("connection lost: " + o.errorMessage); };
     mqtt.onMessageArrived = function (m) {
         words = m.destinationName.split("/");
-        if (mqtt.clientId == '' && clientId == '' && words[2] == "user") {
-            clientId = words[4];
+//        if (mqtt.clientId == '' && clientId == '' && words[2] == "user") {
+//            clientId = words[4];
+//        }
+        if (mqtt.clientId == '' && words[0] == 'actions' && words[1] == "init" ) {
+            clientId = words[2];
+            mqtt.subscribe(get_topic("actions"), subscribeOptions);
+            console.log(clientId)
+            ws.send(enc(tuple(atom('Init'),1,2)));
+            return;
         }
 
         var BERT = m.payloadBytes.buffer.slice(m.payloadBytes.byteOffset,
