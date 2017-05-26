@@ -66,7 +66,6 @@ render_actions(Actions) ->
     First  = n2o:render(Actions),
     Second = n2o:render(n2o:actions()),
     n2o:actions([]),
-%    io:format("\r~nACTIONS: ~tp\r~n",[iolist_to_binary([First,Second])]),
     [First,Second].
 
 % n2o events
@@ -81,11 +80,7 @@ html_events({pickle,Source,Pickled,Linked}=Pickle, State) ->
 
 render_ev(#ev{name=F,msg=P,trigger=T},_Source,Linked,State) ->
     #cx{module=M} = get(context),
-%    io:format("\r~nEV MODULE: ~tp\~n",[{M,F,Linked}]),
     case F of
          api_event -> M:F(P,Linked,State);
-         event -> lists:map(fun({K,V})-> put(K,nitro:to_binary(V)) end,Linked),
-                  X = M:F(P),
-%                 io:format("\r~nPAGE RES: ~tp\~n",[X]),
-                  X;
+         event -> lists:map(fun({K,V})-> put(K,nitro:to_binary(V)) end,Linked), M:F(P);
          _UserCustomEvent -> M:F(P,T,State) end.

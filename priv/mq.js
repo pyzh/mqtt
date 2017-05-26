@@ -11,7 +11,7 @@ var clientId = '';
 function get_topic(prefix) { return prefix + "/" + module + "/anon/" + clientId; }
 
 var subscribeOptions = {
-    qos: 0,  // QoS
+    qos: 2,  // QoS
     invocationContext: { foo: true },  // Passed to success / failure callback
     onSuccess: function () { console.log("N2O Subscribed"); },
     onFailure: function (m) { console.log("N2O Subscription failed: " + message.errorMessage); },
