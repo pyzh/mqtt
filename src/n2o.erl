@@ -45,30 +45,13 @@ on_client_connected(ConnAck, Client = #mqtt_client{client_id = ClientId,
                                                    client_pid = ClientPid,
                                                    username   = Username}, Env) ->
     io:format("~n~nclient [~s] connected, connack: ~w\r~n", [ClientId, {Username, ConnAck, Env}]),
-    % 1. retrive from kvs subscription list (friends, rooms)
-    % 2. perform MQTT subscription on this list + user/:name/events
-
-%%    io:format("Headers: ~p~n", [Header]),
-%%    emqttd:subscribe(<<"+/events">>, ClientId),
-%%    Session = iolist_to_binary("session/"++binary_to_list(ClientId)++"/events"),
-%%    emqttd:subscribe(Session, ClientId),
-%%    {_, NPid, _} = emqttd_guid:new(),
-%%    ClientId = iolist_to_binary(["emqttd_", integer_to_list(NPid)]),
-
-
     Replace = fun(Topic) -> rep(<<"%u">>, Username, rep(<<"%c">>, ClientId, Topic)) end,
-%%    Topics = [{<<"user/%u/%c/events">>, 2}, {<<"user/%u/%c/actions">>, 0}],
-%%    Msg = emqttd_message:make(ClientId, <<"user/%u/%c/events">>, term_to_binary([])),
-%%    Topics = [{<<"actions/init/user/%u/%c">>, 0}],
     Topics = [{<<"actions/init/%c">>, 0}],
     TopicTable = [{Replace(Topic), Qos} || {Topic, Qos} <- Topics],
-    io:format("!!!!!!!!!!!!!TopicTable: ~p~n", [{TopicTable, ClientId}]),
     put(client_id, ClientId),
     put(client_pid, ClientPid),
     ClientPid ! {subscribe, TopicTable},
     ClientPid = self(),
-%%    Msg = emqttd_message:make(ClientId, <<"actions/init/", ClientId/binary>>, term_to_binary([])),
-%%    emqttd:publish(Msg),
     {ok, Client}.
 
 on_client_disconnected(Reason, _Client = #mqtt_client{client_id = ClientId}, _Env) ->
@@ -98,17 +81,12 @@ select(Topic) ->
     [Module, Room] =
         case Words of
             [<<"actions">>, M, R|_] ->
-%%                put(topic,BinTopic),
                 [binary_to_list(M), R];
             [A] -> ["index", A];
             [] -> ["index", "lobby"];
             _ -> ["index", "lobby"]
         end,
     SelectModule:Function(Module,Room).
-%%    [Module,Room] = case string:tokens(binary_to_list(iolist_to_binary(Topic)),"_") of
-%%         [M,R] -> [M,R];
-%%           [A] -> ["index",A];
-%%            [] -> ["index","lobby"] end, SelectModule:Function(Module,Room).
 
 select(Module,Room) -> [list_to_atom(Module),Room].
 
@@ -152,25 +130,26 @@ on_message_publish(Message = #mqtt_message{topic = <<"events/", RestTopic/binary
     Cx = n2o:cache(WsClientId),
     {From2, _} = From,
     RestWords = emqttd_topic:words(RestTopic),
+    BERT = binary_to_term(Payload),
+    io:format("BERT: ~p~n",[BERT]),
     case {WsClientId, RestWords, Cx} of
-        {From2, [Mod, U, ClientId] = RT, undefined} ->
-            io:format("!!!!!!!!!on_message_publish: ~p~n", [RT]),
+        {From2, [Mod, U, ClientId] = RT, Cx} ->
             ActionsTopic = emqttd_topic:join([<<"actions">>|RT]),
             [Module, Room] = [erlang:binary_to_atom(Mod, utf8), <<"">>],
             put(topic, Room),
             Cx2 = #cx{module=Module,session=WsClientId,req=self(),formatter=bert,params=[]},
             put(context,Cx2),
             n2o:cache(WsClientId,Cx2),
-            case n2o_proto:info({init,<<>>},[],?CTX(WsClientId)) of
+            case n2o_proto:info(BERT,[],?CTX(WsClientId)) of
                 {reply, {binary, M}, _, _} ->
-%%              ActionBinTopic = iolist_to_binary(string:join(lists:droplast(string:tokens(binary_to_list(Topic), "/"))++["actions"], "/")),
-%%              Msg = emqttd_message:make(Name, 1, ActionBinTopic, M),
-%%                    emqttd:subscribe(ClientId, ActionsTopic, 2),
-                    Msg = emqttd_message:make(WsClientId, 1, ActionsTopic, M),
+                     TOP = iolist_to_binary(["actions/init/",WsClientId]),
+                    io:format("ClientId: ~p ActionTopic: ~p~n",[WsClientId, TOP]),
+                    Msg = emqttd_message:make(WsClientId, 1, TOP, M),
                     io:format("N2O, ~p MOD ~p LOGIN: ~p\r~n",[ClientId, Module, self()]),
-                    emqttd:publish(Msg); % nynja://root/user/:name/actions
+                    emqttd:publish(Msg);
                 _ -> skip end;
-        _ ->
+        X ->
+            io:format("ERROR ~p~n",[X]),
             ok
     end,
     {ok, Message};
@@ -198,6 +177,7 @@ n2o_proto(Res,ClientId,Topic) ->
      end.
 
 on_message_delivered(ClientId, _Username, Message = #mqtt_message{topic = Topic, payload = Payload}, _Env) ->
+    io:format("message ~p delivered.\r~n", [ClientId]),
     {ok,Message}.
 
 
