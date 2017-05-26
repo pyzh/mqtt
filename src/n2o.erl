@@ -129,9 +129,7 @@ on_message_publish(Message = #mqtt_message{topic = <<"events/", RestTopic/binary
     io:format("BERT: ~p~n",[{BERT,Address,ClientId}]),
     case Address of
          [Mod, U, JavaScriptId] ->
-            ReplyTopic = iolist_to_binary(["actions/init/",case JavaScriptId of
-                                                                '' -> ClientId;
-                                                                E -> nitro:to_binary(E) end]),
+            ReplyTopic = iolist_to_binary(["actions/init/",ClientId]),
             [Module, Room] = [erlang:binary_to_atom(Mod, utf8), <<"">>],
             put(topic, Room),
             Cx = #cx{module=Module,session=ClientId,req=self(),formatter=bert,params=[]},
@@ -150,8 +148,11 @@ on_message_publish(Message = #mqtt_message{topic = <<"events/", RestTopic/binary
             ok
     end,
     {ok, Message};
-on_message_publish(Message = #mqtt_message{topic = Topic, from=From, payload = Payload}, _Env) ->
-    on_message_publish(Message#mqtt_message{from={From,ok}}, _Env).
+on_message_publish(Message = #mqtt_message{topic = <<"events/", RestTopic/binary>> = Topic, from=From, payload = Payload}, _Env) ->
+    on_message_publish(Message#mqtt_message{from={From,ok}}, _Env);
+
+on_message_publish(Message = #mqtt_message{topic = Topic, from=_, payload = Payload}, _Env) ->
+    {ok,Message}.
 
 on_message_delivered(ClientId, _Username, Message = #mqtt_message{topic = Topic, payload = Payload}, _Env) ->
     io:format("message ~p delivered.\r~n", [ClientId]),

@@ -19,8 +19,6 @@ function co(name) { match = document.cookie.match(new RegExp(name + '=([^;]+)'))
 
 var $io = {}; $io.on = function onio(r, cb) {
     if (is(r, 3, 'io')) {
-        console.log("IO:");
-        console.log(utf8_dec(r.v[1].v));
         try { eval(utf8_dec(r.v[1].v)); if (typeof cb == 'function') cb(r); return { status: "ok" }; }
         catch (e) { console.log(e); return { status: '' }; }
     } else return { status: '' };
