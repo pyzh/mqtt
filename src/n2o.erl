@@ -63,20 +63,6 @@ reg(X,Y) ->
          undefined -> gproc:reg({p,l,X},Y), cache({pool,X},X);
                  _ -> skip end.
 
-select(Module,Room) -> [list_to_atom(Module),Room].
-select(Topic) ->
-    {SelectModule,Function} = application:get_env(n2o,select,{n2o,select}),
-    BinTopic = iolist_to_binary(Topic),
-    Words = emqttd_topic:words(BinTopic),
-    [Module, Room] =
-        case Words of
-            [<<"actions">>, M, R|_] -> [binary_to_list(M), R];
-            [A] -> ["index", A];
-            []  -> ["index", "lobby"];
-            _   -> ["index", "lobby"]
-        end,
-    SelectModule:Function(Module,Room).
-
 on_client_subscribe(ClientId, Username, TopicTable, _Env) ->
     io:format("client ~p subscribe ~p.~n", [ClientId, TopicTable]),
     {ok, TopicTable}.
@@ -88,10 +74,6 @@ on_client_unsubscribe(ClientId, Username, TopicTable, _Env) ->
 on_session_created(ClientId, Username, _Env) ->
     io:format("session ~p created.", [ClientId]).
 
-on_session_subscribed(ClientId, Username, {<<"actions/init/", _/binary>> = Topic, Opts}, _Env) ->
-    io:format("session ~p subscribed: ~p~n", [ClientId, Topic]),
-    {ok, {Topic, Opts}};
-
 on_session_subscribed(ClientId, Username, {Topic, Opts}, _Env) ->
     io:format("session ~p subscribed: ~p.~n", [ClientId, Topic]),
     {ok, {Topic, Opts}}.
@@ -102,9 +84,6 @@ on_session_unsubscribed(ClientId, Username, {Topic, Opts}, _Env) ->
 
 on_session_terminated(ClientId, Username, Reason, _Env) ->
     io:format("session ~p terminated.", [ClientId]).
-
-on_message_publish(Message = #mqtt_message{topic = <<"$SYS/", _/binary>>}, _) ->
-    {ok, Message};
 
 on_message_publish(Message = #mqtt_message{topic = <<"actions/", RestTopic/binary>> = Topic, from=From, payload = Payload}, _Env) ->
     io:format("on_message_publish: ~p~n", [{actions, Topic, From, self()}]),
@@ -119,7 +98,7 @@ on_message_publish(Message = #mqtt_message{topic = <<"events/", RestTopic/binary
          [Mod, U, JavaScriptId] ->
          ReplyTopic = iolist_to_binary(["actions/init/",ClientId]),
          Module = erlang:binary_to_atom(Mod, utf8),
-         Cx = #cx{module=Module,session=ClientId,req=[],formatter=bert,params=[]},
+         Cx = #cx{module=Module,session=ClientId,formatter=bert,params=[]},
          put(context,Cx),
          n2o:cache(ClientId,Cx),
          case n2o_proto:info(BERT,[],Cx) of
@@ -127,9 +106,9 @@ on_message_publish(Message = #mqtt_message{topic = <<"events/", RestTopic/binary
                       io:format("ClientId: ~p ActionTopic: ~p~n",[ClientId, ReplyTopic]),
                       io:format("Module: ~p Username: ~p~n",[Mod,U]),
                       emqttd:publish(emqttd_message:make(ClientId, ReplyTopic, M));
-                 _ -> io:format("Protocol Violation"),
-                      skip end;
-         X -> io:format("ERROR ~p~n",[X]),
+                 O -> io:format("Protocol Violation Output ~p~n",[O]),
+                      ok end;
+         X -> io:format("Protocol Violation Input ~p~n",[X]),
               ok end,
     {ok, Message};
 
