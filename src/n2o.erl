@@ -48,8 +48,6 @@ on_client_connected(ConnAck, Client = #mqtt_client{client_id = ClientId,
     Replace = fun(Topic) -> rep(<<"%u">>, Username, rep(<<"%c">>, ClientId, Topic)) end,
     Topics = [{<<"actions/init/%c">>, 0}],
     TopicTable = [{Replace(Topic), Qos} || {Topic, Qos} <- Topics],
-    put(client_id, ClientId),
-    put(client_pid, ClientPid),
     ClientPid ! {subscribe, TopicTable},
     ClientPid = self(),
     {ok, Client}.
@@ -91,7 +89,7 @@ select(Topic) ->
 select(Module,Room) -> [list_to_atom(Module),Room].
 
 on_client_subscribe(ClientId, Username, TopicTable, _Env) ->
-    io:format("client(~p/~s) subscribe ~p\r~n", [{get_client_id(), self(), ClientId}, Username, TopicTable]),
+    io:format("client(~p/~s) subscribe ~p\r~n", [ClientId, Username, TopicTable]),
     {ok, TopicTable}.
 
 on_client_unsubscribe(ClientId, Username, TopicTable, _Env) ->
@@ -124,45 +122,47 @@ on_message_publish(Message = #mqtt_message{topic = <<"$SYS/", _/binary>>}, _) ->
 on_message_publish(Message = #mqtt_message{topic = <<"actions/", RestTopic/binary>> = Topic, from=From, payload = Payload}, _Env) ->
     io:format("on_message_publish: ~p~n", [{actions, Topic, From, self()}]),
     {ok, Message};
-on_message_publish(Message = #mqtt_message{topic = <<"events/", RestTopic/binary>> = Topic, from=From, payload = Payload}, _Env) ->
-    WsClientId = get_client_id(),
-    io:format("on_message_publish: ~p~n", [{events, Topic, From, WsClientId, self()}]),
-    Cx = n2o:cache(WsClientId),
-    {From2, _} = From,
-    RestWords = emqttd_topic:words(RestTopic),
+on_message_publish(Message = #mqtt_message{topic = <<"events/", RestTopic/binary>> = Topic, from={ClientId,_}, payload = Payload}, _Env) ->
+    Address = emqttd_topic:words(RestTopic),
     BERT = binary_to_term(Payload),
-    io:format("BERT: ~p~n",[BERT]),
-    case {WsClientId, RestWords, Cx} of
-        {From2, [Mod, U, ClientId] = RT, Cx} ->
-            ActionsTopic = emqttd_topic:join([<<"actions">>|RT]),
+    io:format("on_message_publish: ~p~n", [{events, Topic, ClientId, self()}]),
+    io:format("BERT: ~p~n",[{BERT,Address,ClientId}]),
+    case Address of
+         [Mod, U, JavaScriptId] ->
+            ReplyTopic = iolist_to_binary(["actions/init/",case JavaScriptId of
+                                                                '' -> ClientId;
+                                                                E -> nitro:to_binary(E) end]),
             [Module, Room] = [erlang:binary_to_atom(Mod, utf8), <<"">>],
             put(topic, Room),
-            Cx2 = #cx{module=Module,session=WsClientId,req=self(),formatter=bert,params=[]},
-            put(context,Cx2),
-            n2o:cache(WsClientId,Cx2),
-            case n2o_proto:info(BERT,[],?CTX(WsClientId)) of
+            Cx = #cx{module=Module,session=ClientId,req=self(),formatter=bert,params=[]},
+            put(context,Cx),
+            n2o:cache(ClientId,Cx),
+            case n2o_proto:info(BERT,[],Cx) of
                 {reply, {binary, M}, _, _} ->
-                     TOP = iolist_to_binary(["actions/init/",WsClientId]),
-                    io:format("ClientId: ~p ActionTopic: ~p~n",[WsClientId, TOP]),
-                    Msg = emqttd_message:make(WsClientId, 2, TOP, M),
-                    io:format("N2O, ~p MOD ~p LOGIN: ~p\r~n",[ClientId, Module, self()]),
-                    emqttd:publish(Msg);
-                _ -> skip end;
+                    io:format("ClientId: ~p ActionTopic: ~p Size: ~p~n",[ClientId, ReplyTopic, size(M)]),
+                    io:format("Module: ~p Username: ~p~n",[Mod,U]),
+                    emqttd:publish(
+                    emqttd_message:make(ClientId, 0, ReplyTopic, M));
+                _ -> io:format("ERROR 2"),
+                      skip end;
         X ->
             io:format("ERROR ~p~n",[X]),
             ok
     end,
     {ok, Message};
 on_message_publish(Message = #mqtt_message{topic = Topic, from=From, payload = Payload}, _Env) ->
-    io:format("on_message_publish: ~p~n", [{Topic, From, self()}]),
-    {ok, Message}.
+    on_message_publish(Message#mqtt_message{from={From,ok}}, _Env).
 
 on_message_delivered(ClientId, _Username, Message = #mqtt_message{topic = Topic, payload = Payload}, _Env) ->
     io:format("message ~p delivered.\r~n", [ClientId]),
     {ok,Message}.
 
-on_message_acked(ClientId, Username, Message = #mqtt_message{topic = Topic, payload = Payload}, _Env) ->
+on_message_acked(ClientId, Username, Message = #mqtt_message{topic = <<"events/", RestTopic/binary>> = Topic, from=From, payload = Payload}, _Env) ->
     io:format("client ~p acked.\r~n", [ClientId]),
+    {ok,Message};
+
+on_message_acked(ClientId, Username, Message = #mqtt_message{topic = Topic, payload = Payload}, _Env) ->
+    io:format("client ~p acked~n",[ClientId]),
     {ok,Message}.
 
 unload() ->

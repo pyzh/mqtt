@@ -27,7 +27,7 @@ var ws = {
     send: function (payload) {
         var message = new Paho.MQTT.Message(payload);
         message.destinationName = get_topic("events");
-        message.qos = 1;
+        message.qos = 2;
         mqtt.send(message);
     }
 };
@@ -35,12 +35,15 @@ var ws = {
 function MQTT_start() {
     mqtt.onConnectionLost = function (o) { console.log("connection lost: " + o.errorMessage); };
     mqtt.onMessageArrived = function (m) {
+        console.log(m.destinationName);
+        if (clientId == '') {
+            words = m.destinationName.split("/");
+            clientId = words[2];
+        }
         var BERT = m.payloadBytes.buffer.slice(m.payloadBytes.byteOffset,
             m.payloadBytes.byteOffset + m.payloadBytes.length);
         try {
             erlang = dec(BERT);
-            console.log(m.destinationName);
-            console.log(erlang);
             for (var i = 0; i < $bert.protos.length; i++) {
                 p = $bert.protos[i]; if (p.on(erlang, p.do).status == "ok") return;
             }
