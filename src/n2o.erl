@@ -157,34 +157,13 @@ on_message_publish(Message = #mqtt_message{topic = Topic, from=From, payload = P
     io:format("on_message_publish: ~p~n", [{Topic, From, self()}]),
     {ok, Message}.
 
-n2o_proto(Res,ClientId,Topic) ->
-    Cx = n2o:cache(ClientId),
-    put(context,Cx),
-    case n2o_proto:info(Res,Cx#cx.req,Cx) of
-         {reply, <<>>, _, _} ->
-             io:format("UNKOWN INCOME: ~p\r~n",[Res]),
-             {ok, emqttd_message:make(ClientId, 0, Topic, <<>>)};
-         {reply, {binary, M}, _, _} ->
-              ActionTopic = iolist_to_binary(string:join(lists:droplast(string:tokens(binary_to_list(Topic), "/"))++["actions"], "/")),
-              io:format("PROTO: ~p~n",[{ClientId,Topic, ActionTopic, self()}]),
-%%             Msg = emqttd_message:make(ClientId, 2, Topic, M),
-              Msg = emqttd_message:make(ClientId, 2, ActionTopic, M),
-              emqttd:publish(Msg), % nynja://root/user/:name/actions
-              {ok, emqttd_message:make(ClientId, 0, ActionTopic, M)};
-         W ->
-              io:format("UNKOWN OUTCOME: ~p\r~n",[W]),
-              {ok, emqttd_message:make(ClientId, 0, Topic, <<>>)}
-     end.
-
 on_message_delivered(ClientId, _Username, Message = #mqtt_message{topic = Topic, payload = Payload}, _Env) ->
     io:format("message ~p delivered.\r~n", [ClientId]),
     {ok,Message}.
 
-
 on_message_acked(ClientId, Username, Message = #mqtt_message{topic = Topic, payload = Payload}, _Env) ->
     io:format("client ~p acked.\r~n", [ClientId]),
-%%    n2o_proto(binary_to_term(Payload),ClientId,Topic),
-    {ok,<<>>}.
+    {ok,Message}.
 
 unload() ->
     emqttd:unhook('client.connected',     fun ?MODULE:on_client_connected/3),
