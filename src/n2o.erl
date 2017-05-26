@@ -144,7 +144,7 @@ on_message_publish(Message = #mqtt_message{topic = <<"events/", RestTopic/binary
                 {reply, {binary, M}, _, _} ->
                      TOP = iolist_to_binary(["actions/init/",WsClientId]),
                     io:format("ClientId: ~p ActionTopic: ~p~n",[WsClientId, TOP]),
-                    Msg = emqttd_message:make(WsClientId, 1, TOP, M),
+                    Msg = emqttd_message:make(WsClientId, 2, TOP, M),
                     io:format("N2O, ~p MOD ~p LOGIN: ~p\r~n",[ClientId, Module, self()]),
                     emqttd:publish(Msg);
                 _ -> skip end;

@@ -20,7 +20,8 @@ var subscribeOptions = {
 var options = {
     timeout: 3,
     onFailure: function (m) { console.log("N2O Connection failed: " + m.errorMessage); },
-    onSuccess: function ()  { console.log("N2O Connected"); }
+    onSuccess: function ()  { console.log("N2O Connected");
+                              ws.send(enc(tuple(atom('init'),bin('')))); }
 };
 var ws = {
     send: function (payload) {
