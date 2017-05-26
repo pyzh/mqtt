@@ -19,7 +19,6 @@ info({init,_Rest},Req,State = #cx{module = Module}) ->
              catch C:E -> Error = n2o:stack(C,E),
                           io:format("Event Init: ~p:~p~n~p~n",Error),
                           {stack,Error} end,
-             io:format("!!!!!!!!!!!!!!!!info: ~p~n", [iolist_to_binary(render_actions(n2o:actions()))]),
              {reply,n2o:format({io,render_actions(n2o:actions()),<<>>}),
                     Req,State};
         {error,E} ->
@@ -67,7 +66,7 @@ render_actions(Actions) ->
     First  = n2o:render(Actions),
     Second = n2o:render(n2o:actions()),
     n2o:actions([]),
-    io:format("\r~nACTIONS: ~tp\r~n",[iolist_to_binary([First,Second])]),
+%    io:format("\r~nACTIONS: ~tp\r~n",[iolist_to_binary([First,Second])]),
     [First,Second].
 
 % n2o events
@@ -82,11 +81,11 @@ html_events({pickle,Source,Pickled,Linked}=Pickle, State) ->
 
 render_ev(#ev{name=F,msg=P,trigger=T},_Source,Linked,State) ->
     #cx{module=M} = get(context),
-    io:format("\r~nEV MODULE: ~tp\~n",[{M,F,Linked}]),
+%    io:format("\r~nEV MODULE: ~tp\~n",[{M,F,Linked}]),
     case F of
          api_event -> M:F(P,Linked,State);
          event -> lists:map(fun({K,V})-> put(K,nitro:to_binary(V)) end,Linked),
                   X = M:F(P),
-                 io:format("\r~nPAGE RES: ~tp\~n",[X]),
+%                 io:format("\r~nPAGE RES: ~tp\~n",[X]),
                   X;
          _UserCustomEvent -> M:F(P,T,State) end.
