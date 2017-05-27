@@ -12,8 +12,8 @@
 %%                                               N2O Topic Format
 %%
 %% Client: 1. actions/emqttd_198234215548221
-%% Server: 2. events/index/maxim@synrc.com/emqttd_198234215548221
-%%         3. events/login/anon/emqttd_198234215548221
+%% Server: 2. events/3/index/maxim@synrc.com/emqttd_198234215548221
+%%         3. events/2/login/anon/emqttd_198234215548221
 %% Review: 4. room/n2o
 
 load(Env) ->
@@ -37,23 +37,22 @@ start(_,_) -> load([]), X = supervisor:start_link({local,n2o},n2o, []),
               [ n2o_async:start(#handler{module=n2o_vnode,class=ring,group=n2o,state=[],name=Pos})
                 || {{Name,Nodes},Pos} <- lists:zip(ring(),lists:seq(1,length(ring()))) ],
               X.
-ring_master() -> hd([ I || {_,I,_,[n2o_ring]} <- supervisor:which_children(n2o) ]).
-ring()     -> n2o_ring:ring(ring_master()).
+ring()     -> n2o_ring:ring_list().
 init([])   -> [ ets:new(T,opt()) || T <- tables() ],
-              { ok, { { one_for_one, 1000, 10 }, [ring(node(),ring_size())] } }.
-
-ring_size() -> 16.
-ring(I,N) -> {I,{n2o_ring,start_link,[[{I,I,N}]]},permanent,2000,worker,[n2o_ring]}.
+              n2o_ring:init([{node(),1,16}]),
+              { ok, { { one_for_one, 1000, 10 }, [] } }.
 
 % Dead Simple Plugin Filter
 % No Server Processes Involved
 % No Echo
 % Limited QoS = 0 for sending actions
 
+on_client_connected(ConnAck, Client=#mqtt_client{client_id= <<"emqttc",_/bytes>>}, _) ->
+   {ok, Client};
+
 on_client_connected(ConnAck, Client = #mqtt_client{client_id  = ClientId,
                                                    client_pid = ClientPid,
                                                    username   = Username}, Env) ->
-    io:format("~n~nclient ~p connected, connack: ~p\r~n", [ClientId, {Username, ConnAck, Env}]),
     Replace = fun(Topic) -> rep(<<"%u">>, Username, rep(<<"%c">>, ClientId, Topic)) end,
     Topics = [{<<"actions/%c">>, 2}],
     TopicTable = [{Replace(Topic), Qos} || {Topic, Qos} <- Topics],
@@ -76,32 +75,39 @@ reg(X,Y) ->
          undefined -> gproc:reg({p,l,X},Y), cache({pool,X},X);
                  _ -> skip end.
 
-on_client_subscribe(_ClientId, _Username, TopicTable, _Env) ->
-    io:format("client subscribed ~p.\r~n", [TopicTable]),
+on_client_subscribe(ClientId, _Username, TopicTable, _Env) ->
+%    io:format("client subscribed ~p.\r~n", [TopicTable]),
     {ok, TopicTable}.
 
 on_client_unsubscribe(ClientId, _Username, TopicTable, _Env) ->
-    io:format("client ~p unsubscribe ~p.\r~n", [ClientId, TopicTable]),
+%    io:format("client ~p unsubscribe ~p.\r~n", [ClientId, TopicTable]),
     {ok, TopicTable}.
 
 on_session_created(ClientId, _Username, _Env) ->
-    io:format("session ~p created.\r~n", [ClientId]).
+%    io:format("session ~p created.\r~n", [ClientId]),
+    ok.
 
-on_session_subscribed(ClientId, _Username, {Topic, Opts}, _Env) ->
+on_session_subscribed(<<"emqttd",_/bytes>> = ClientId, _Username, {Topic, Opts}, _Env) ->
     io:format("session ~p subscribed: ~p.\r~n", [ClientId, Topic]),
-    {ok, {Topic, Opts}}.
+    n2o:send_reply(ClientId, 0, iolist_to_binary(["actions/",ClientId]), 
+            term_to_binary({io,<<>>,<<>>})),
+    {ok, {Topic, Opts}};
+
+on_session_subscribed(_ClientId, _Username, {Topic, Opts}, _Env) ->
+    {ok, {Topic, Opts}}.   
 
 on_session_unsubscribed(ClientId, _Username, {Topic, Opts}, _Env) ->
-    io:format("session ~p unsubscribed: ~p.\r~n", [ClientId, {Topic, Opts}]),
+%    io:format("session ~p unsubscribed: ~p.\r~n", [ClientId, {Topic, Opts}]),
     ok.
 
 on_session_terminated(ClientId, _Username, _Reason, _Env) ->
-    io:format("session ~p terminated.\r~n", [ClientId]).
+    io:format("session ~p terminated.\r~n", [{ClientId,_Reason}]),
+    ok.
 
 on_message_publish(Message = #mqtt_message{topic = <<"actions/",
                    _/binary>> = Topic,
                    from=From}, _Env) ->
-    io:format("on_message_publish: ~tp from ~p\r~n", [{actions, Topic}, From]),
+%    io:format("on_message_publish: ~tp from ~p\r~n", [{actions, Topic}, From]),
     {ok, Message};
 
 % TODO: Move to DHT Supervisor with subscription to events/vnode/:id
@@ -110,20 +116,6 @@ on_message_publish(Message = #mqtt_message{topic = <<"events/",
                    RestTopic/binary>>,
                    from={ClientId,_Undefined},
                    payload = Payload}, _Env) ->
-    Address = emqttd_topic:words(RestTopic),
-    BERT    = binary_to_term(Payload,[safe]),
-    io:format("BERT: ~tp\r~nAddress: ~p\r~n",[BERT,Address]),
-    io:format("on_message_publish: ~tp from ~p\r~n", [{events, RestTopic}, ClientId]),
-    case Address of
-         [Mod, _Username, _JavaScriptId] ->
-         Topic  = iolist_to_binary(["actions/",ClientId]),
-         Module = binary_to_atom(Mod, utf8),
-         Cx     = #cx{module=Module,session=ClientId,formatter=bert},
-         put(context,Cx),
-         case n2o_proto:info(BERT,[],Cx) of
-            {reply, {binary, Msg}, _, _} -> send_reply(ClientId, Topic, Msg);
-            Return -> io:format("ERR: Invalid Return ~p~n",  [Return]), ok end;
-           Address -> io:format("ERR: Unknown Address ~p~n",[Address]), ok end,
     {ok, Message};
 
 on_message_publish(Message, _) ->
@@ -131,17 +123,17 @@ on_message_publish(Message, _) ->
 
 % TODO: Eliminate qos=0 limitation
 
-send_reply(ClientId, Topic, Message) ->
-%    io:format("Send Reply: ~p~n",[{ClientId, Topic, size(Message)}]),
-    spawn(fun() -> emqttd:publish(emqttd_message:make(ClientId, Topic, Message)) end).
+send_reply(ClientId, Topic, Message) -> send_reply(ClientId, 0, Topic, Message).
+send_reply(ClientId, QoS, Topic, Message) ->
+    emqttd:publish(emqttd_message:make(ClientId, QoS, Topic, Message)).
+
+send_reply_async(ClientId, Topic, Message) -> send_reply_async(ClientId, 0, Topic, Message).
+send_reply_async(ClientId, QoS, Topic, Message) ->
+    spawn(fun() -> emqttd:publish(emqttd_message:make(ClientId, QoS, Topic, Message)) end).
 
 on_message_delivered(ClientId, _Username, Message, _Env) ->
     io:format("message ~p delivered.\r~n", [{ClientId, Message#mqtt_message.topic}]),
     {ok,Message}.
-
-on_message_acked(ClientId, _Username, Message = #mqtt_message{topic = <<"events/",_/binary>>}, _Env) ->
-    io:format("client ~p acked.\r~n", [ClientId]),
-    {ok,Message};
 
 on_message_acked(ClientId, _Username, Message, _Env) ->
     io:format("client ~p acked.\r~n",[ClientId]),

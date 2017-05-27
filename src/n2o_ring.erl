@@ -1,29 +1,12 @@
 -module(n2o_ring).
--copyright('JackNyfe, Inc.').
--license('BSD-2').
+-description('N2O Consistent Hash Ring').
+-copyright('Synrc Research Center').
 -include("n2o.hrl").
--behaviour(gen_server).
 -compile(export_all).
--export([code_change/3,handle_call/3,handle_cast/2,handle_info/2,init/1,terminate/2]).
 -record(state, { ring, nodes }).
 
-add(Ring, {_Node, _Opaque, _Weight} = Peer) -> gen_server:call(Ring, {add, [Peer]});
-add(Ring, Nodes) -> gen_server:call(Ring, {add, Nodes}).
-delete(Ring, Node) when not is_list(Node) -> gen_server:call(Ring, {delete, [Node]});
-delete(Ring, Nodes) -> gen_server:call(Ring, {delete, Nodes}).
-get_config(Ring) -> gen_server:call(Ring, {get_config}).
-lookup(Ring, Key) -> lookup_index(Ring, index1(Key)).
-lookup_index(Ring, Index) -> gen_server:call(Ring, {lookup, Index}, 15000).
-nodes(Ring) -> gen_server:call(Ring, {nodes}).
-ring(Ring) -> array:to_list(gen_server:call(Ring, {ring})).
-partitions(Ring) -> partitions_from_ring(gen_server:call(Ring, {ring})).
-set_opaque(Ring, Node, Opaque) -> gen_server:call(Ring, {set_opaque, {Node, Opaque}}).
-start_link(Peers) -> gen_server:start_link(?MODULE, Peers, []).
-start_link(ServerName, Peers) -> gen_server:start_link({local, ServerName}, ?MODULE, Peers, []).
-stop(RingPid) -> gen_server:call(RingPid, {stop}).
-
-node_shares(Ring) ->
-    Partitions = partitions(Ring),
+node_shares() ->
+    Partitions = partitions(),
     NodePartitions = fun(Node) ->
             lists:foldl(fun
                     ({RN, From, To}, Acc) when RN == Node -> Acc + (To - From);
@@ -32,79 +15,61 @@ node_shares(Ring) ->
     end,
     lists:flatten([io_lib:format("\t~p weight ~p share ~.2f%~n",
                 [Node, Weight, Share])
-            || {Node, _, Weight} <- get_config(Ring),
+            || {Node, _, Weight} <- get_config(),
             Share <- [100 * NodePartitions(Node) / 65536]]).
 
-partitions_if_node_added(Ring, Node) ->
-    Nodes = get_config(Ring),
+partitions_if_node_added(Node) ->
+    Nodes = get_config(),
     {ok, S} = init([Node | Nodes]),
     partitions_from_ring(S#state.ring).
 
 %% gen_server callbacks
 
-handle_call({add, Nodes}, _From, #state{ nodes = OldNodes } = State) ->
+add(Nodes) ->
+    OldNodes = get_config(),
     case [ N || {N, _, _} <- Nodes, lists:keymember(N, 1, OldNodes) ] of
-        [] ->
-            {ok, NewState} = init(OldNodes ++ Nodes),
-            {reply, ok, NewState};
-        Overlaps ->
-            {reply, {error, already_there, Overlaps}, State}
-    end;
+        []       -> init(OldNodes ++ Nodes);
+        Overlaps -> {error, {already_there, Overlaps}}
+    end.
 
-handle_call({delete, Nodes}, _From, #state{ nodes = OldNodes } = State) ->
+delete(Nodes) ->
+    OldNodes = get_config(),
     case [ N || N <- Nodes, not lists:keymember(N, 1, OldNodes) ] of
         [] ->
-            {ok, NewState} = init(
-                [Node || {N, _, _} = Node <- OldNodes, not lists:member(N, Nodes)]
-            ),
-            {reply, ok, NewState};
-        NotThere -> {reply, {error, unknown_nodes, NotThere}, State}
-    end;
+            init([Node || {N, _, _} = Node <- OldNodes, not lists:member(N, Nodes)]),
+            ok;
+        NotThere -> {error, {unknown_nodes, NotThere}}
+    end.
 
-handle_call({get_config}, _From, #state{ nodes = Nodes } = State) ->
-    {reply, Nodes, State};
+get_config() -> application:get_env(n2o,nodes,[]).
+ring() -> application:get_env(n2o,ring,[]).
+ring_list() -> array:to_list(ring()).
+lookup(Key) -> lookup_index(index1(Key)).
+partitions() -> partitions_from_ring(ring()).
+nodes() -> [{Name, Opaque} || {Name, Opaque, _} <- get_config() ].
 
-handle_call({ring}, _From, #state{ ring = Ring } = State) ->
-    {reply, Ring, State};
-
-handle_call({lookup, KeyIndex}, _From, #state{ ring = Ring } = State) ->
+lookup_index(KeyIndex) ->
+    Ring = application:get_env(n2o,ring,[]),
     true = (KeyIndex >= 0) andalso (KeyIndex < 65536),
     case bsearch(Ring, KeyIndex) of
-        empty -> {reply, [], State};
-        PartIdx -> {reply, {ring,PartIdx}, State}
-    end;
+        empty -> [];
+        PartIdx -> {ring,PartIdx}
+    end.
 
-handle_call({nodes}, _From, #state{ nodes = Nodes } = State) ->
-    {reply, [{Name, Opaque} || {Name, Opaque, _} <- Nodes], State};
-
-handle_call({set_opaque, {Name, Opaque}}, _From, State) ->
+set_opaque({Name, Opaque}) ->
     NewNodes = lists:map(fun
             ({N, _OldOpaque, Weight}) when N == Name -> {N, Opaque, Weight};
             (V) -> V
-        end, State#state.nodes),
+        end, get_config()),
     NewRing = array:from_list(lists:map(fun({Hash, Data}) ->
                     {Hash, lists:map(fun
                                 ({N, _OldOpaque}) when N == Name -> {N, Opaque};
                                 (V) -> V
                             end, Data)}
-            end, array:to_list(State#state.ring))),
-    NewState = State#state{
-        ring = NewRing,
-        nodes = NewNodes
-    },
-    {reply, ok, NewState};
-
-handle_call({stop}, _From, State) ->
-    {stop, normal, stopped, State};
-
-handle_call(_Request, _From, State) ->
-    {noreply, State}.
-
-handle_cast(_Request, State) ->
-    {noreply, State}.
-
-handle_info(_Request, State) ->
-    {noreply, State}.
+            end, ring_list())),
+    application:set_env(n2o,nodes,NewNodes),
+    application:set_env(n2o,ring,NewRing),
+    {ok, #state{ring=NewRing,nodes=NewNodes}}.
 
 init(Peers) ->
     X = lists:sum([ C||{_,_,C} <- Peers]),
@@ -116,14 +81,10 @@ init(Peers) ->
         ]
     ),
     Ring = array:from_list(assemble_ring([], lists:reverse(RawRing), [], length(Peers))),
-    io:format("Created a ring with ~b points in it.~n", [array:sparse_size(Ring)]),
-    {ok, #state{ ring = Ring, nodes = Peers }}.
-
-terminate(_Reason, _State) ->
-    ok.
-
-code_change(_OldVsn, State, _Extra) ->
-    {ok, State}.
+    io:format("Created a ring with ~b points in it.\r~n", [array:sparse_size(Ring)]),
+    application:set_env(n2o,ring,Ring),
+    application:set_env(n2o,nodes,Peers),
+    {ok, #state{ring=Ring,nodes=Peers}}.
 
 %% Internal functions
 
@@ -161,8 +122,6 @@ index1(Key) ->
     <<A,B,_/bytes>> = erlang:md5(term_to_binary(Key)),
     (A bsl 8 + B).
 
-% We rely on the fact that the array is kept intact after creation, e.g. no
-% undefined entries exist in the middle.
 bsearch(Arr, K) ->
     Size =  array:sparse_size(Arr),
     if Size == 0 -> empty; true -> bsearch(Arr, Size, 0, Size - 1, K) end.
