@@ -9,6 +9,14 @@
 -include("emqttd.hrl").
 -compile(export_all).
 -export([start/2, stop/1, init/1, proc/2]).
+
+%% Topics Format:
+%% Client:
+%% actions/init/emqttd_198234215548221
+%% Server:
+%% events/index/anon/emqttd_198234215548221
+%% events/login/anon/emqttd_198234215548221
+
 load(Env) ->
     emqttd:hook('client.connected',    fun ?MODULE:on_client_connected/3,     [Env]),
     emqttd:hook('client.disconnected', fun ?MODULE:on_client_disconnected/3,  [Env]),
@@ -37,7 +45,7 @@ get_client_id() ->
 
 % Very Simple Router, No Server Processes
 
-on_client_connected(ConnAck, Client = #mqtt_client{client_id = ClientId,
+on_client_connected(ConnAck, Client = #mqtt_client{client_id  = ClientId,
                                                    client_pid = ClientPid,
                                                    username   = Username}, Env) ->
     io:format("~n~nclient ~p connected, connack: ~p~n", [ClientId, {Username, ConnAck, Env}]),
@@ -52,9 +60,9 @@ on_client_disconnected(Reason, _Client = #mqtt_client{client_id = ClientId}, _En
     io:format("client ~s disconnected, reason: ~w\r~n", [ClientId, Reason]),
     ok.
 
-rep(<<"%c">>, ClientId, Topic)  -> emqttd_topic:feed_var(<<"%c">>, ClientId, Topic);
+rep(<<"%c">>, ClientId, Topic)  -> emqttd_topic:feed_var(<<"%c">>, ClientId,   Topic);
 rep(<<"%u">>, undefined, Topic) -> emqttd_topic:feed_var(<<"%u">>, <<"anon">>, Topic);
-rep(<<"%u">>, Username, Topic)  -> emqttd_topic:feed_var(<<"%u">>, Username, Topic).
+rep(<<"%u">>, Username, Topic)  -> emqttd_topic:feed_var(<<"%u">>, Username,   Topic).
 
 send(X,Y) -> gproc:send({p,l,X},Y).
 reg(Pool) -> reg(Pool,undefined).
@@ -85,37 +93,46 @@ on_session_unsubscribed(ClientId, Username, {Topic, Opts}, _Env) ->
 on_session_terminated(ClientId, Username, Reason, _Env) ->
     io:format("session ~p terminated.", [ClientId]).
 
-on_message_publish(Message = #mqtt_message{topic = <<"actions/", RestTopic/binary>> = Topic, from=From, payload = Payload}, _Env) ->
+on_message_publish(Message = #mqtt_message{topic = <<"actions/", 
+                   RestTopic/binary>> = Topic, 
+                   from=From, 
+                   payload = Payload}, _Env) ->
     io:format("on_message_publish: ~p~n", [{actions, Topic, From, self()}]),
     {ok, Message};
 
-on_message_publish(Message = #mqtt_message{topic = <<"events/", RestTopic/binary>> = Topic, from={ClientId,_}, payload = Payload}, _Env) ->
+on_message_publish(Message = #mqtt_message{topic = <<"events/", 
+                   RestTopic/binary>> = Topic, 
+                   from={ClientId,_},
+                   payload = Payload}, _Env) ->
     Address = emqttd_topic:words(RestTopic),
-    BERT = binary_to_term(Payload),
-    io:format("on_message_publish: ~p~n", [{events, Topic, ClientId, self()}]),
-    io:format("BERT: ~p~n",[{BERT,Address,ClientId}]),
+    BERT    = binary_to_term(Payload),
+    io:format("on_message_publish: ~p~n", [{events, Topic, ClientId}]),
+    io:format("BERT: ~p~n",[{BERT,Address}]),
     case Address of
          [Mod, U, JavaScriptId] ->
          ReplyTopic = iolist_to_binary(["actions/init/",ClientId]),
-         Module = erlang:binary_to_atom(Mod, utf8),
-         Cx = #cx{module=Module,session=ClientId,formatter=bert,params=[]},
+         Module     = erlang:binary_to_atom(Mod, utf8),
+         Cx         = #cx{module=Module,session=ClientId,formatter=bert},
          put(context,Cx),
          n2o:cache(ClientId,Cx),
          case n2o_proto:info(BERT,[],Cx) of
               {reply, {binary, M}, _, _} ->
-                      io:format("ClientId: ~p ActionTopic: ~p~n",[ClientId, ReplyTopic]),
-                      io:format("Module: ~p Username: ~p~n",[Mod,U]),
+              io:format("ClientId: ~p ReplyTopic: ~p~n",[ClientId, ReplyTopic]),
+              io:format("Module: ~p Username: ~p~n",[Mod,U]),
                       emqttd:publish(emqttd_message:make(ClientId, ReplyTopic, M));
-                 O -> io:format("Protocol Violation Output ~p~n",[O]),
-                      ok end;
-         X -> io:format("Protocol Violation Input ~p~n",[X]),
-              ok end,
+              Return -> io:format("ERR: Invalid Return ~p~n",[Return]), ok end;
+         Address -> io:format("ERR: Unknown Address ~p~n",[Adress]),    ok end,
     {ok, Message};
 
-on_message_publish(Message = #mqtt_message{topic = <<"events/", RestTopic/binary>> = Topic, from=From, payload = Payload}, _Env) ->
+on_message_publish(Message = #mqtt_message{topic = <<"events/", 
+                   RestTopic/binary>> = Topic, 
+                   from=From, 
+                   payload = Payload}, _Env) ->
     on_message_publish(Message#mqtt_message{from={From,ok}}, _Env);
 
-on_message_publish(Message = #mqtt_message{topic = Topic, from=_, payload = Payload}, _Env) ->
+on_message_publish(Message = #mqtt_message{topic = Topic, 
+                   from=_, 
+                   payload = Payload}, _Env) ->
     {ok,Message}.
 
 on_message_delivered(ClientId, _Username, Message = #mqtt_message{topic = Topic, payload = Payload}, _Env) ->
