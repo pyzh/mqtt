@@ -108,17 +108,16 @@ on_message_publish(Message = #mqtt_message{topic = <<"events/",
     Address = emqttd_topic:words(RestTopic),
     BERT    = binary_to_term(Payload,[safe]),
     io:format("on_message_publish: ~p~n", [{events, RestTopic, ClientId}]),
-    io:format("BERT: ~p~n",[{BERT,Address}]),
+    io:format("BERT: ~tp~nAddress: ~p~n",[BERT,Address]),
     case Address of
          [Mod, U, JavaScriptId] ->
          Topic = iolist_to_binary(["actions/",ClientId]),
          Module     = erlang:binary_to_atom(Mod, utf8),
          Cx         = #cx{module=Module,session=ClientId,formatter=bert},
          put(context,Cx),
-         n2o:cache(ClientId,Cx),
          case n2o_proto:info(BERT,[],Cx) of
             {reply, {binary, Msg}, _, _} -> send_reply(ClientId, Topic, Msg);
-            Return -> io:format("ERR: Invalid Return ~p~n",[Return]),   ok end;
+            Return -> io:format("ERR: Invalid Return ~p~n",  [Return]), ok end;
            Address -> io:format("ERR: Unknown Address ~p~n",[Address]), ok end,
     {ok, Message};
 
