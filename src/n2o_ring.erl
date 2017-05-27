@@ -1,6 +1,5 @@
 -module(n2o_ring).
 -description('N2O Consistent Hash Ring').
--copyright('Synrc Research Center').
 -include("n2o.hrl").
 -compile(export_all).
 -record(state, { ring, nodes }).
@@ -53,7 +52,7 @@ lookup_index(KeyIndex) ->
     true = (KeyIndex >= 0) andalso (KeyIndex < 65536),
     case bsearch(Ring, KeyIndex) of
         empty -> [];
-        PartIdx -> {ring,PartIdx}
+        PartIdx -> {ring,PartIdx+1}
     end.
 
 set_opaque({Name, Opaque}) ->

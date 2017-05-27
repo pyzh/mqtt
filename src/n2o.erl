@@ -39,8 +39,22 @@ start(_,_) -> load([]), X = supervisor:start_link({local,n2o},n2o, []),
               X.
 ring()     -> n2o_ring:ring_list().
 init([])   -> [ ets:new(T,opt()) || T <- tables() ],
-              n2o_ring:init([{node(),1,16}]),
+              n2o_ring:init([{node(),1,4}]),
               { ok, { { one_for_one, 1000, 10 }, [] } }.
+
+% MQTT vs OTP benchmarks
+
+bench() -> [bench_mqtt(),bench_otp()].
+
+bench_mqtt() -> N = 16000, {T,_} = timer:tc(fun() -> [ begin Y = nitro:to_list(X rem 16), 
+    n2o:send_reply(<<>>,iolist_to_binary(["events/",Y]),term_to_binary([])) 
+                               end || X <- lists:seq(1,N) ], ok end),
+           {mqtt,trunc(N*1000000/T),"msgs/s"}.
+
+bench_otp() -> N = 100000, {T,_} = timer:tc(fun() ->
+     [ n2o:ring_send({publish, <<"events/1/index/anon/room/">>, term_to_binary(X)}) 
+                || X <- lists:seq(1,N) ], ok end),
+           {otp,trunc(N*1000000/T),"msgs/s"}.
 
 % Dead Simple Plugin Filter
 % No Server Processes Involved
@@ -132,7 +146,7 @@ send_reply_async(ClientId, QoS, Topic, Message) ->
     spawn(fun() -> emqttd:publish(emqttd_message:make(ClientId, QoS, Topic, Message)) end).
 
 on_message_delivered(ClientId, _Username, Message, _Env) ->
-    io:format("message ~p delivered.\r~n", [{ClientId, Message#mqtt_message.topic}]),
+%    io:format("message ~p delivered.\r~n", [{ClientId, Message#mqtt_message.topic}]),
     {ok,Message}.
 
 on_message_acked(ClientId, _Username, Message, _Env) ->
@@ -187,7 +201,7 @@ proc({timer,ping},#handler{state=Timer}=Async) ->
     {reply,ok,Async#handler{state=timer_restart(ping())}}.
 
 ring_send(Msg) ->
-    {ring,VNode} = n2o_ring:lookup(n2o:ring_master(),Msg),
+    {ring,VNode} = n2o_ring:lookup(Msg),
     n2o_async:send(ring,VNode,Msg).
 
 timer_restart(Diff) -> {X,Y,Z} = Diff, erlang:send_after(1000*(Z+60*Y+60*60*X),self(),{timer,ping}).
