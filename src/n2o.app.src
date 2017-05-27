@@ -1,6 +1,6 @@
 {application, n2o, [
-    {description,  "N2O Server"},
-    {vsn,          "4.5-mqtt"},
+    {description,  "N2O Server for MQTT"},
+    {vsn,          "4.6"},
     {license,      "ISC"},
     {applications, [kernel, stdlib]},
     {modules,      []},
