@@ -129,7 +129,7 @@ send_reply(ClientId, Topic, Message) ->
     spawn(fun() -> emqttd:publish(emqttd_message:make(ClientId, Topic, Message)) end).
 
 on_message_delivered(ClientId, _Username, Message, _Env) ->
-    io:format("message ~p delivered.\r~n", [ClientId]),
+    io:format("message ~p delivered.\r~n", [{ClientId, Message#mqtt_message.topic}]),
     {ok,Message}.
 
 on_message_acked(ClientId, _Username, Message = #mqtt_message{topic = <<"events/",_/binary>>}, _Env) ->
