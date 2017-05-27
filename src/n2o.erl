@@ -1,6 +1,5 @@
 -module(n2o).
 -description('N2O Protocol Server for MQTT').
--compile({parse_transform, lager_transform}).
 -author('Maxim Sokhatsky').
 -license('ISC').
 -behaviour(supervisor).
@@ -49,7 +48,7 @@ on_client_connected(ConnAck, Client = #mqtt_client{client_id  = ClientId,
                                                    username   = Username}, Env) ->
     io:format("~n~nclient ~p connected, connack: ~p~n", [ClientId, {Username, ConnAck, Env}]),
     Replace = fun(Topic) -> rep(<<"%u">>, Username, rep(<<"%c">>, ClientId, Topic)) end,
-    Topics = [{<<"actions/%c">>, 0}],
+    Topics = [{<<"actions/%c">>, 2}],
     TopicTable = [{Replace(Topic), Qos} || {Topic, Qos} <- Topics],
     ClientPid ! {subscribe, TopicTable},
     ClientPid = self(),
@@ -70,32 +69,31 @@ reg(X,Y) ->
          undefined -> gproc:reg({p,l,X},Y), cache({pool,X},X);
                  _ -> skip end.
 
-on_client_subscribe(ClientId, Username, TopicTable, _Env) ->
-    io:format("client ~p subscribe ~p.~n", [ClientId, TopicTable]),
+on_client_subscribe(_ClientId, _Username, TopicTable, _Env) ->
+    io:format("client subscribed ~p.~n", [TopicTable]),
     {ok, TopicTable}.
 
-on_client_unsubscribe(ClientId, Username, TopicTable, _Env) ->
+on_client_unsubscribe(ClientId, _Username, TopicTable, _Env) ->
     io:format("client ~p unsubscribe ~p.~n", [ClientId, TopicTable]),
     {ok, TopicTable}.
 
-on_session_created(ClientId, Username, _Env) ->
+on_session_created(ClientId, _Username, _Env) ->
     io:format("session ~p created.", [ClientId]).
 
-on_session_subscribed(ClientId, Username, {Topic, Opts}, _Env) ->
+on_session_subscribed(ClientId, _Username, {Topic, Opts}, _Env) ->
     io:format("session ~p subscribed: ~p.~n", [ClientId, Topic]),
     {ok, {Topic, Opts}}.
 
-on_session_unsubscribed(ClientId, Username, {Topic, Opts}, _Env) ->
+on_session_unsubscribed(ClientId, _Username, {Topic, Opts}, _Env) ->
     io:format("session ~p unsubscribed: ~p.~n", [ClientId, {Topic, Opts}]),
     ok.
 
-on_session_terminated(ClientId, Username, Reason, _Env) ->
+on_session_terminated(ClientId, _Username, _Reason, _Env) ->
     io:format("session ~p terminated.", [ClientId]).
 
 on_message_publish(Message = #mqtt_message{topic = <<"actions/",
-                   RestTopic/binary>> = Topic,
-                   from=From,
-                   payload = Payload}, _Env) ->
+                   _/binary>> = Topic,
+                   from=From}, _Env) ->
     io:format("on_message_publish: ~p~n", [{actions, Topic, From}]),
     {ok, Message};
 
@@ -103,14 +101,14 @@ on_message_publish(Message = #mqtt_message{topic = <<"actions/",
 
 on_message_publish(Message = #mqtt_message{topic = <<"events/",
                    RestTopic/binary>>,
-                   from={ClientId,_},
+                   from={ClientId,_Undefined},
                    payload = Payload}, _Env) ->
     Address = emqttd_topic:words(RestTopic),
     BERT    = binary_to_term(Payload,[safe]),
     io:format("on_message_publish: ~p~n", [{events, RestTopic, ClientId}]),
     io:format("BERT: ~tp~nAddress: ~p~n",[BERT,Address]),
     case Address of
-         [Mod, U, JavaScriptId] ->
+         [Mod, _Username, _JavaScriptId] ->
          Topic = iolist_to_binary(["actions/",ClientId]),
          Module     = erlang:binary_to_atom(Mod, utf8),
          Cx         = #cx{module=Module,session=ClientId,formatter=bert},
@@ -121,29 +119,21 @@ on_message_publish(Message = #mqtt_message{topic = <<"events/",
            Address -> io:format("ERR: Unknown Address ~p~n",[Address]), ok end,
     {ok, Message};
 
-on_message_publish(Message = #mqtt_message{topic = <<"events/",
-                   RestTopic/binary>> = Topic,
-                   from=From,
-                   payload = Payload}, _Env) ->
-    on_message_publish(Message#mqtt_message{from={From,ok}}, _Env);
-
-on_message_publish(Message = #mqtt_message{topic = Topic,
-                   from=_,
-                   payload = Payload}, _Env) ->
+on_message_publish(Message, _) ->
     {ok,Message}.
 
 send_reply(ClientId, Topic, Message) ->
     spawn(fun() -> emqttd:publish(emqttd_message:make(ClientId, Topic, Message)) end).
 
-on_message_delivered(ClientId, _Username, Message = #mqtt_message{topic = Topic, payload = Payload}, _Env) ->
+on_message_delivered(ClientId, _Username, Message, _Env) ->
     io:format("message ~p delivered.\r~n", [ClientId]),
     {ok,Message}.
 
-on_message_acked(ClientId, Username, Message = #mqtt_message{topic = <<"events/", RestTopic/binary>> = Topic, from=From, payload = Payload}, _Env) ->
+on_message_acked(ClientId, _Username, Message = #mqtt_message{topic = <<"events/",_/binary>>}, _Env) ->
     io:format("client ~p acked.\r~n", [ClientId]),
     {ok,Message};
 
-on_message_acked(ClientId, Username, Message = #mqtt_message{topic = Topic, payload = Payload}, _Env) ->
+on_message_acked(ClientId, _Username, Message, _Env) ->
     io:format("client ~p acked~n",[ClientId]),
     {ok,Message}.
 
