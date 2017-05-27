@@ -1,30 +1,225 @@
 -module(n2o_ring).
--description('Ring Master').
--copyright('Synrc Research Center s.r.o.').
+-copyright('JackNyfe, Inc.').
+-license('BSD-2').
+-behaviour(gen_server).
 -compile(export_all).
--define(DEFRING, 4).
--define(RINGTOP, trunc(math:pow(2,160)-1)). % SHA-1 space
+-export([code_change/3,handle_call/3,handle_cast/2,handle_info/2,init/1,terminate/2]).
+-record(state, { ring, nodes }).
 
-init() -> application:set_env(n2o,peers,[{  'cr@127.0.0.1',9000,9001,9002},
-                                         { 'cr2@127.0.0.1',9004,9005,9006},
-                                         { 'cr3@127.0.0.1',9008,9009,9010}]).
+add(Ring, {_Node, _Opaque, _Weight} = Peer) ->
+    gen_server:call(Ring, {add, [Peer]});
 
-key_of(Object) -> crypto:hash(sha, term_to_binary(Object)).
-inc(N) -> ?RINGTOP div N.
-fresh(N, Seed) -> {N, [{Int,Seed} || Int <- lists:seq(0,(?RINGTOP-1),inc(N))]}.
-succ(Idx,{N,Nodes}) -> <<Int:160/integer>> =Idx, {A,B}=lists:split((Int div inc(N))+1,Nodes), B++A.
-hash(Object)   -> hd(seq(Object)).
-rep(Object)    -> roll(element(2,hash(Object))).
-roll(N)        -> lists:seq(N,length(peers())) ++ lists:seq(1,N-1).
-seq(Object)    -> lists:keydelete(0,1,succ(key_of(Object),ring())).
-ring()         -> ring(?DEFRING).
-ring(C)        -> {Nodes,[{0,1}|Rest]} = fresh(length(peers())*C,1),
-                  {Nodes,[{0,0}|lists:map(fun({{I,1},X})->{I,(X-1) div C+1} end,
-                                lists:zip(Rest,lists:seq(1,length(Rest))))]}.
-chain(Object) ->
-    {N,_} = ring(),
-    lists:map(fun(X) -> lists:nth((X-1)*?DEFRING+1,seq(Object)) end,
-              roll(element(2,hash(Object)))).
+add(Ring, Nodes) ->
+    gen_server:call(Ring, {add, Nodes}).
 
-peers()        -> {ok,Peers}=application:get_env(n2o,peers),Peers.
-peers(N)       -> lists:zip(lists:seq(1,N),lists:seq(1,N)).
+delete(Ring, Node) when not is_list(Node) ->
+    gen_server:call(Ring, {delete, [Node]});
+
+delete(Ring, Nodes) ->
+    gen_server:call(Ring, {delete, Nodes}).
+
+get_config(Ring) ->
+    gen_server:call(Ring, {get_config}).
+
+lookup(Ring, Key) ->
+    lookup_index(Ring, index(Key)).
+
+lookup_index(Ring, Index) ->
+    gen_server:call(Ring, {lookup, Index}, 15000).
+
+nodes(Ring) ->
+    gen_server:call(Ring, {nodes}).
+
+node_shares(Ring) ->
+    Partitions = partitions(Ring),
+    NodePartitions = fun(Node) ->
+            lists:foldl(fun
+                    ({RN, From, To}, Acc) when RN == Node -> Acc + (To - From);
+                    (_, Acc) -> Acc
+                end, 0, Partitions)
+    end,
+    lists:flatten([io_lib:format("\t~p weight ~p share ~.2f%~n",
+                [Node, Weight, Share])
+            || {Node, _, Weight} <- get_config(Ring),
+            Share <- [100 * NodePartitions(Node) / 65536]]).
+
+partitions(Ring) ->
+    partitions_from_ring(gen_server:call(Ring, {ring})).
+
+partitions_if_node_added(Ring, Node) ->
+    Nodes = get_config(Ring),
+    {ok, S} = init([Node | Nodes]),
+    partitions_from_ring(S#state.ring).
+
+set_opaque(Ring, Node, Opaque) ->
+    gen_server:call(Ring, {set_opaque, {Node, Opaque}}).
+
+start_link(Peers) ->
+    gen_server:start_link(?MODULE, Peers, []).
+
+start_link(ServerName, Peers) ->
+    gen_server:start_link({local, ServerName}, ?MODULE, Peers, []).
+
+stop(RingPid) ->
+    gen_server:call(RingPid, {stop}).
+
+%% gen_server callbacks
+
+handle_call({add, Nodes}, _From, #state{ nodes = OldNodes } = State) ->
+    case [ N || {N, _, _} <- Nodes, lists:keymember(N, 1, OldNodes) ] of
+        [] ->
+            {ok, NewState} = init(OldNodes ++ Nodes),
+            {reply, ok, NewState};
+        Overlaps ->
+            {reply, {error, already_there, Overlaps}, State}
+    end;
+
+handle_call({delete, Nodes}, _From, #state{ nodes = OldNodes } = State) ->
+    case [ N || N <- Nodes, not lists:keymember(N, 1, OldNodes) ] of
+        [] ->
+            {ok, NewState} = init(
+                [Node || {N, _, _} = Node <- OldNodes, not lists:member(N, Nodes)]
+            ),
+            {reply, ok, NewState};
+        NotThere -> {reply, {error, unknown_nodes, NotThere}, State}
+    end;
+
+handle_call({get_config}, _From, #state{ nodes = Nodes } = State) ->
+    {reply, Nodes, State};
+
+handle_call({ring}, _From, #state{ ring = Ring } = State) ->
+    {reply, Ring, State};
+
+handle_call({lookup, KeyIndex}, _From, #state{ ring = Ring } = State) ->
+    true = (KeyIndex >= 0) andalso (KeyIndex < 65536),
+    case bsearch(Ring, KeyIndex) of
+        empty -> {reply, [], State};
+        PartIdx ->
+            {_Hash, NodeList} = array:get(PartIdx, Ring),
+            {reply, NodeList, State}
+    end;
+
+handle_call({nodes}, _From, #state{ nodes = Nodes } = State) ->
+    {reply, [{Name, Opaque} || {Name, Opaque, _} <- Nodes], State};
+
+handle_call({set_opaque, {Name, Opaque}}, _From, State) ->
+    NewNodes = lists:map(fun
+            ({N, _OldOpaque, Weight}) when N == Name -> {N, Opaque, Weight};
+            (V) -> V
+        end, State#state.nodes),
+    NewRing = array:from_list(lists:map(fun({Hash, Data}) ->
+                    {Hash, lists:map(fun
+                                ({N, _OldOpaque}) when N == Name -> {N, Opaque};
+                                (V) -> V
+                            end, Data)}
+            end, array:to_list(State#state.ring))),
+    NewState = State#state{
+        ring = NewRing,
+        nodes = NewNodes
+    },
+    {reply, ok, NewState};
+
+handle_call({stop}, _From, State) ->
+    {stop, normal, stopped, State};
+
+handle_call(_Request, _From, State) ->
+    {noreply, State}.
+
+handle_cast(_Request, State) ->
+    {noreply, State}.
+
+handle_info(_Request, State) ->
+    {noreply, State}.
+
+init(Peers) ->
+    RawRing = lists:keysort(1,
+        [{H, {Node, Opaque}} || {Node, Opaque, Weight} <- Peers,
+            N <- lists:seq(1, Weight),
+            H <- [index([atom_to_list(Node), integer_to_list(N)])]
+        ]
+    ),
+    Ring = array:from_list(assemble_ring([], lists:reverse(RawRing), [], length(Peers))),
+    io:format("Created a ring with ~b points in it.", [array:sparse_size(Ring)]),
+    {ok, #state{ ring = Ring, nodes = Peers }}.
+
+terminate(_Reason, _State) ->
+    ok.
+
+code_change(_OldVsn, State, _Extra) ->
+    {ok, State}.
+
+%% Internal functions
+
+assemble_ring(_, [], R, _) -> R;
+assemble_ring(H,[{Hash, {NN, _} = N} |T],R,L) ->
+    ITN = [N|[E || {N2,_} = E<-H, N2 /= NN]],
+    LITN = length(ITN),
+    TN = case LITN == L of
+        true -> ITN;
+        false ->
+            {_, RN} = try lists:foldr(
+                    fun(_, {L2, Acc}) when L2==L -> throw({L2, Acc});
+                        ({_, {N2, _} = E}, {L2, Acc}) ->
+                            case lists:keymember(N2, 1, Acc) of
+                                true -> {L2, Acc};
+                                false -> {L2+1, Acc++[E]}
+                            end
+                    end, {LITN, ITN}, T)
+                catch throw:V -> V end,
+            RN
+    end,
+    assemble_ring(ITN,T,[{Hash,TN}|R],L).
+
+calc_partitions([{Idx, [{Node, _} | _]}], FirstIdx, Acc) ->
+    [{Node, 0, FirstIdx}, {Node, Idx, 65536} | Acc];
+calc_partitions([{Idx1, [{Node, _} | _]}, {Idx2, _} = E | T], FirstIdx, Acc) ->
+    calc_partitions([E|T], FirstIdx, [{Node, Idx1, Idx2} | Acc]).
+
+partitions_from_ring(Ring) ->
+    ArrL = array:to_list(Ring),
+    [{Idx, _} | _] = ArrL,
+    calc_partitions(ArrL, Idx, []).
+
+index(Key) ->
+    <<A,B,_/bytes>> = erlang:md5(term_to_binary(Key)),
+    A bsl 8 + B.
+
+% We rely on the fact that the array is kept intact after creation, e.g. no
+% undefined entries exist in the middle.
+bsearch(Arr, K) ->
+    Size =  array:sparse_size(Arr),
+    if Size == 0 -> empty; true -> bsearch(Arr, Size, 0, Size - 1, K) end.
+
+bsearch(Arr, Size, LIdx, RIdx, K) ->
+    MIdx = LIdx + (RIdx - LIdx + 1) div 2,
+    true = (MIdx >= LIdx) andalso (MIdx =< RIdx),
+    case key_fits(Arr, Size, MIdx - 1, MIdx, K) of
+        {yes, Idx} -> Idx;
+        {no, lt} -> bsearch(Arr, Size, LIdx, MIdx, K);
+        {no, gt} ->
+            if
+                MIdx == (Size - 1) -> Size - 1;
+                true -> bsearch(Arr, Size, MIdx, RIdx, K)
+            end
+    end.
+
+key_fits(_Arr, 1, -1, 0, _K) ->
+    {yes, 0};
+
+key_fits(Arr, Size, -1, 0, K) ->
+    {Hash0, _} = array:get(0, Arr),
+    {HashS, _} = array:get(Size - 1, Arr),
+    true = K < HashS,
+    if
+        K < Hash0 -> {yes, Size - 1};
+        true -> {no, gt}
+    end;
+
+key_fits(Arr, Size, L, R, K) ->
+    {LHash, _} = array:get(L, Arr),
+    {RHash, _} = array:get(R, Arr),
+    if
+        K < LHash -> if L == 0 -> {yes, Size - 1}; true -> {no, lt} end;
+        (K >= LHash) andalso (K < RHash) -> {yes, L};
+        K >= RHash -> {no, gt}
+    end.
