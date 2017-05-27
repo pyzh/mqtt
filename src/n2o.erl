@@ -97,7 +97,7 @@ on_message_publish(Message = #mqtt_message{topic = <<"actions/",
     io:format("on_message_publish: ~p~n", [{actions, Topic, From}]),
     {ok, Message};
 
-% TODO: Move to DHT Supervisor
+% TODO: Move to DHT Supervisor with subscription to events/#
 
 on_message_publish(Message = #mqtt_message{topic = <<"events/",
                    RestTopic/binary>>,
@@ -109,9 +109,9 @@ on_message_publish(Message = #mqtt_message{topic = <<"events/",
     io:format("BERT: ~tp~nAddress: ~p~n",[BERT,Address]),
     case Address of
          [Mod, _Username, _JavaScriptId] ->
-         Topic = iolist_to_binary(["actions/",ClientId]),
-         Module     = erlang:binary_to_atom(Mod, utf8),
-         Cx         = #cx{module=Module,session=ClientId,formatter=bert},
+         Topic  = iolist_to_binary(["actions/",ClientId]),
+         Module = erlang:binary_to_atom(Mod, utf8),
+         Cx     = #cx{module=Module,session=ClientId,formatter=bert},
          put(context,Cx),
          case n2o_proto:info(BERT,[],Cx) of
             {reply, {binary, Msg}, _, _} -> send_reply(ClientId, Topic, Msg);
@@ -121,6 +121,8 @@ on_message_publish(Message = #mqtt_message{topic = <<"events/",
 
 on_message_publish(Message, _) ->
     {ok,Message}.
+
+% TODO: Eliminate qos=0 limitation
 
 send_reply(ClientId, Topic, Message) ->
     spawn(fun() -> emqttd:publish(emqttd_message:make(ClientId, Topic, Message)) end).
