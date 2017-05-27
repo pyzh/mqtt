@@ -1,4 +1,4 @@
-N2O: Protocol Server 4.5 for MQTT
+N2O: Protocol Server 4.6 for MQTT
 =================================
 
 Features
@@ -16,11 +16,11 @@ Features
 Special version of N2O
 ----------------------
 
-N2O 4.5 MQTT is what you get when you reduce everything duplicating MQTT features.
-On the other hand, N2O 4.5 MQTT is completely N2O-compatible
+N2O MQTT is what you get when you reduce everything duplicating MQTT features.
+On the other hand, N2O MQTT is completely N2O-compatible
 embeddable protocol relay.
 
-* `n2o.erl` — N2O: Protocol Server 4.5 for MQTT
+* `n2o.erl` — N2O: Protocol Server for MQTT
 * `n2o_async.erl` — N2O Async: gen_server
 * `n2o_format` — N2O Formatter: JSON, BERT
 * `n2o_ftp` — N2O File: FTP
@@ -44,6 +44,16 @@ and philosophy is a fit for your project
 Credits
 -------
 
+* Yuri Maslovsky
+* Liubov Mykhailova
 * Maxim Sokhatsky
+* Igor Kharin
+
+History
+-------
+
+4.5 — Basic Messaging with single topic and Echo
+4.6 — Echo eliminated Basic Filter with req/rep topics
+4.7 — DHT supervised node for server MQTT connections
 
 OM A HUM
