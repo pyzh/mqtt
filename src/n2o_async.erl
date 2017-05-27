@@ -47,7 +47,7 @@ stop(Class,Name) ->
 
 start(#handler{class=Class,name=Name,module=Module,group=Group} = Async) ->
     ChildSpec = {{Class,Name},{?MODULE,start_link,[Async]},transient,5000,worker,[Module]},
-    io:format("Async Start Attempt ~p~n",[Async#handler{config=[]}]),
+    io:format("Async Start Attempt ~p\r~n",[Async#handler{config=[]}]),
     case supervisor:start_child(Group,ChildSpec) of
          {ok,Pid}   -> {Pid,Async#handler.name};
          {ok,Pid,_} -> {Pid,Async#handler.name};
@@ -68,7 +68,11 @@ handle_call({get},_,Async)   -> {reply,Async,Async};
 handle_call(Message,_,#handler{module=Mod}=Async) -> Mod:proc(Message,Async).
 handle_cast(Message,  #handler{module=Mod}=Async) -> Mod:proc(Message,Async).
 handle_info(timeout,  #handler{module=Mod}=Async) -> Mod:proc(timeout,Async);
-handle_info(Message,  #handler{module=Mod}=Async) -> {noreply,element(3,Mod:proc(Message,Async))}.
+handle_info(Message,  #handler{module=Mod}=Async) -> {noreply,case Mod:proc(Message,Async) of
+                                                                   {_,_,S} -> S;
+                                                                   {_,S} -> S;
+                                                                   S -> S
+                                                                end}.
 start_link(Parameters) -> gen_server:start_link(?MODULE, Parameters, []).
 code_change(_,State,_) -> {ok, State}.
 terminate(_Reason, #handler{name=Name,group=Group,class=Class}) ->

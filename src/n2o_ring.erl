@@ -1,34 +1,26 @@
 -module(n2o_ring).
 -copyright('JackNyfe, Inc.').
 -license('BSD-2').
+-include("n2o.hrl").
 -behaviour(gen_server).
 -compile(export_all).
 -export([code_change/3,handle_call/3,handle_cast/2,handle_info/2,init/1,terminate/2]).
 -record(state, { ring, nodes }).
 
-add(Ring, {_Node, _Opaque, _Weight} = Peer) ->
-    gen_server:call(Ring, {add, [Peer]});
-
-add(Ring, Nodes) ->
-    gen_server:call(Ring, {add, Nodes}).
-
-delete(Ring, Node) when not is_list(Node) ->
-    gen_server:call(Ring, {delete, [Node]});
-
-delete(Ring, Nodes) ->
-    gen_server:call(Ring, {delete, Nodes}).
-
-get_config(Ring) ->
-    gen_server:call(Ring, {get_config}).
-
-lookup(Ring, Key) ->
-    lookup_index(Ring, index(Key)).
-
-lookup_index(Ring, Index) ->
-    gen_server:call(Ring, {lookup, Index}, 15000).
-
-nodes(Ring) ->
-    gen_server:call(Ring, {nodes}).
+add(Ring, {_Node, _Opaque, _Weight} = Peer) -> gen_server:call(Ring, {add, [Peer]});
+add(Ring, Nodes) -> gen_server:call(Ring, {add, Nodes}).
+delete(Ring, Node) when not is_list(Node) -> gen_server:call(Ring, {delete, [Node]});
+delete(Ring, Nodes) -> gen_server:call(Ring, {delete, Nodes}).
+get_config(Ring) -> gen_server:call(Ring, {get_config}).
+lookup(Ring, Key) -> lookup_index(Ring, index1(Key)).
+lookup_index(Ring, Index) -> gen_server:call(Ring, {lookup, Index}, 15000).
+nodes(Ring) -> gen_server:call(Ring, {nodes}).
+ring(Ring) -> array:to_list(gen_server:call(Ring, {ring})).
+partitions(Ring) -> partitions_from_ring(gen_server:call(Ring, {ring})).
+set_opaque(Ring, Node, Opaque) -> gen_server:call(Ring, {set_opaque, {Node, Opaque}}).
+start_link(Peers) -> gen_server:start_link(?MODULE, Peers, []).
+start_link(ServerName, Peers) -> gen_server:start_link({local, ServerName}, ?MODULE, Peers, []).
+stop(RingPid) -> gen_server:call(RingPid, {stop}).
 
 node_shares(Ring) ->
     Partitions = partitions(Ring),
@@ -43,25 +35,10 @@ node_shares(Ring) ->
             || {Node, _, Weight} <- get_config(Ring),
             Share <- [100 * NodePartitions(Node) / 65536]]).
 
-partitions(Ring) ->
-    partitions_from_ring(gen_server:call(Ring, {ring})).
-
 partitions_if_node_added(Ring, Node) ->
     Nodes = get_config(Ring),
     {ok, S} = init([Node | Nodes]),
     partitions_from_ring(S#state.ring).
-
-set_opaque(Ring, Node, Opaque) ->
-    gen_server:call(Ring, {set_opaque, {Node, Opaque}}).
-
-start_link(Peers) ->
-    gen_server:start_link(?MODULE, Peers, []).
-
-start_link(ServerName, Peers) ->
-    gen_server:start_link({local, ServerName}, ?MODULE, Peers, []).
-
-stop(RingPid) ->
-    gen_server:call(RingPid, {stop}).
 
 %% gen_server callbacks
 
@@ -94,9 +71,7 @@ handle_call({lookup, KeyIndex}, _From, #state{ ring = Ring } = State) ->
     true = (KeyIndex >= 0) andalso (KeyIndex < 65536),
     case bsearch(Ring, KeyIndex) of
         empty -> {reply, [], State};
-        PartIdx ->
-            {_Hash, NodeList} = array:get(PartIdx, Ring),
-            {reply, NodeList, State}
+        PartIdx -> {reply, {ring,PartIdx}, State}
     end;
 
 handle_call({nodes}, _From, #state{ nodes = Nodes } = State) ->
@@ -132,14 +107,16 @@ handle_info(_Request, State) ->
     {noreply, State}.
 
 init(Peers) ->
+    X = lists:sum([ C||{_,_,C} <- Peers]),
     RawRing = lists:keysort(1,
-        [{H, {Node, Opaque}} || {Node, Opaque, Weight} <- Peers,
+        [ begin 
+            {H, {Node, Opaque}} end || {Node, Opaque, Weight} <- Peers,
             N <- lists:seq(1, Weight),
-            H <- [index([atom_to_list(Node), integer_to_list(N)])]
+            H <- [index1([atom_to_list(Node), integer_to_list(N)])]
         ]
     ),
     Ring = array:from_list(assemble_ring([], lists:reverse(RawRing), [], length(Peers))),
-    io:format("Created a ring with ~b points in it.", [array:sparse_size(Ring)]),
+    io:format("Created a ring with ~b points in it.~n", [array:sparse_size(Ring)]),
     {ok, #state{ ring = Ring, nodes = Peers }}.
 
 terminate(_Reason, _State) ->
@@ -180,9 +157,9 @@ partitions_from_ring(Ring) ->
     [{Idx, _} | _] = ArrL,
     calc_partitions(ArrL, Idx, []).
 
-index(Key) ->
+index1(Key) ->
     <<A,B,_/bytes>> = erlang:md5(term_to_binary(Key)),
-    A bsl 8 + B.
+    (A bsl 8 + B).
 
 % We rely on the fact that the array is kept intact after creation, e.g. no
 % undefined entries exist in the middle.

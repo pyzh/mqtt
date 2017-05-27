@@ -34,9 +34,16 @@ opt()      -> [ set, named_table, { keypos, 1 }, public ].
 stop(_)    -> unload(), ok.
 start(_,_) -> load([]), X = supervisor:start_link({local,n2o},n2o, []),
               n2o_async:start(#handler{module=?MODULE,class=system,group=n2o,state=[],name="timer"}),
+              [ n2o_async:start(#handler{module=n2o_vnode,class=ring,group=n2o,state=[],name=Pos})
+                || {{Name,Nodes},Pos} <- lists:zip(ring(),lists:seq(1,length(ring()))) ],
               X.
+ring_master() -> hd([ I || {_,I,_,[n2o_ring]} <- supervisor:which_children(n2o) ]).
+ring()     -> n2o_ring:ring(ring_master()).
 init([])   -> [ ets:new(T,opt()) || T <- tables() ],
-              { ok, { { one_for_one, 5, 10 }, [] } }.
+              { ok, { { one_for_one, 1000, 10 }, [ring(node(),ring_size())] } }.
+
+ring_size() -> 16.
+ring(I,N) -> {I,{n2o_ring,start_link,[[{I,I,N}]]},permanent,2000,worker,[n2o_ring]}.
 
 % Dead Simple Plugin Filter
 % No Server Processes Involved
@@ -46,7 +53,7 @@ init([])   -> [ ets:new(T,opt()) || T <- tables() ],
 on_client_connected(ConnAck, Client = #mqtt_client{client_id  = ClientId,
                                                    client_pid = ClientPid,
                                                    username   = Username}, Env) ->
-    io:format("~n~nclient ~p connected, connack: ~p~n", [ClientId, {Username, ConnAck, Env}]),
+    io:format("~n~nclient ~p connected, connack: ~p\r~n", [ClientId, {Username, ConnAck, Env}]),
     Replace = fun(Topic) -> rep(<<"%u">>, Username, rep(<<"%c">>, ClientId, Topic)) end,
     Topics = [{<<"actions/%c">>, 2}],
     TopicTable = [{Replace(Topic), Qos} || {Topic, Qos} <- Topics],
@@ -70,31 +77,31 @@ reg(X,Y) ->
                  _ -> skip end.
 
 on_client_subscribe(_ClientId, _Username, TopicTable, _Env) ->
-    io:format("client subscribed ~p.~n", [TopicTable]),
+    io:format("client subscribed ~p.\r~n", [TopicTable]),
     {ok, TopicTable}.
 
 on_client_unsubscribe(ClientId, _Username, TopicTable, _Env) ->
-    io:format("client ~p unsubscribe ~p.~n", [ClientId, TopicTable]),
+    io:format("client ~p unsubscribe ~p.\r~n", [ClientId, TopicTable]),
     {ok, TopicTable}.
 
 on_session_created(ClientId, _Username, _Env) ->
-    io:format("session ~p created.", [ClientId]).
+    io:format("session ~p created.\r~n", [ClientId]).
 
 on_session_subscribed(ClientId, _Username, {Topic, Opts}, _Env) ->
-    io:format("session ~p subscribed: ~p.~n", [ClientId, Topic]),
+    io:format("session ~p subscribed: ~p.\r~n", [ClientId, Topic]),
     {ok, {Topic, Opts}}.
 
 on_session_unsubscribed(ClientId, _Username, {Topic, Opts}, _Env) ->
-    io:format("session ~p unsubscribed: ~p.~n", [ClientId, {Topic, Opts}]),
+    io:format("session ~p unsubscribed: ~p.\r~n", [ClientId, {Topic, Opts}]),
     ok.
 
 on_session_terminated(ClientId, _Username, _Reason, _Env) ->
-    io:format("session ~p terminated.", [ClientId]).
+    io:format("session ~p terminated.\r~n", [ClientId]).
 
 on_message_publish(Message = #mqtt_message{topic = <<"actions/",
                    _/binary>> = Topic,
                    from=From}, _Env) ->
-    io:format("on_message_publish: ~p~n", [{actions, Topic, From}]),
+    io:format("on_message_publish: ~tp from ~p\r~n", [{actions, Topic}, From]),
     {ok, Message};
 
 % TODO: Move to DHT Supervisor with subscription to events/vnode/:id
@@ -105,8 +112,8 @@ on_message_publish(Message = #mqtt_message{topic = <<"events/",
                    payload = Payload}, _Env) ->
     Address = emqttd_topic:words(RestTopic),
     BERT    = binary_to_term(Payload,[safe]),
-    io:format("BERT: ~tp~nAddress: ~p~n",[BERT,Address]),
-    io:format("on_message_publish: ~p~n", [{events, RestTopic, ClientId}]),
+    io:format("BERT: ~tp\r~nAddress: ~p\r~n",[BERT,Address]),
+    io:format("on_message_publish: ~tp from ~p\r~n", [{events, RestTopic}, ClientId]),
     case Address of
          [Mod, _Username, _JavaScriptId] ->
          Topic  = iolist_to_binary(["actions/",ClientId]),
@@ -137,7 +144,7 @@ on_message_acked(ClientId, _Username, Message = #mqtt_message{topic = <<"events/
     {ok,Message};
 
 on_message_acked(ClientId, _Username, Message, _Env) ->
-    io:format("client ~p acked~n",[ClientId]),
+    io:format("client ~p acked.\r~n",[ClientId]),
     {ok,Message}.
 
 unload() ->
@@ -186,6 +193,10 @@ proc({timer,ping},#handler{state=Timer}=Async) ->
     io:format("n2o Timer: ~p\r~n",[ping]),
     n2o:invalidate_cache(),
     {reply,ok,Async#handler{state=timer_restart(ping())}}.
+
+ring_send(Msg) ->
+    {ring,VNode} = n2o_ring:lookup(n2o:ring_master(),Msg),
+    n2o_async:send(ring,VNode,Msg).
 
 timer_restart(Diff) -> {X,Y,Z} = Diff, erlang:send_after(1000*(Z+60*Y+60*60*X),self(),{timer,ping}).
 ping() -> application:get_env(n2o,timer,{0,10,0}).
