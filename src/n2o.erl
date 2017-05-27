@@ -121,7 +121,7 @@ on_message_publish(Message = #mqtt_message{topic = <<"events/",
               io:format("Module: ~p Username: ~p~n",[Mod,U]),
                       emqttd:publish(emqttd_message:make(ClientId, ReplyTopic, M));
               Return -> io:format("ERR: Invalid Return ~p~n",[Return]), ok end;
-         Address -> io:format("ERR: Unknown Address ~p~n",[Adress]),    ok end,
+         Address -> io:format("ERR: Unknown Address ~p~n",[Address]),    ok end,
     {ok, Message};
 
 on_message_publish(Message = #mqtt_message{topic = <<"events/", 
