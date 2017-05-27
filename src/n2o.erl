@@ -105,8 +105,8 @@ on_message_publish(Message = #mqtt_message{topic = <<"events/",
                    payload = Payload}, _Env) ->
     Address = emqttd_topic:words(RestTopic),
     BERT    = binary_to_term(Payload,[safe]),
-    io:format("on_message_publish: ~p~n", [{events, RestTopic, ClientId}]),
     io:format("BERT: ~tp~nAddress: ~p~n",[BERT,Address]),
+    io:format("on_message_publish: ~p~n", [{events, RestTopic, ClientId}]),
     case Address of
          [Mod, _Username, _JavaScriptId] ->
          Topic  = iolist_to_binary(["actions/",ClientId]),
@@ -201,11 +201,11 @@ cache(Key, Value) -> ets:insert(caching,{Key,till(calendar:local_time(), ttl()),
 cache(Key, Value, Till) -> ets:insert(caching,{Key,Till,Value}), Value.
 cache(Key) ->
     Res = ets:lookup(caching,Key),
-    Val = case Res of [] -> undefined; [Value] -> Value; Values -> Values end,
-    case Val of undefined -> undefined;
+    Val = case Res of [] -> []; [Value] -> Value; Values -> Values end,
+    case Val of [] -> [];
                 {_,infinity,X} -> X;
                 {_,Expire,X} -> case Expire < calendar:local_time() of
-                                  true ->  ets:delete(caching,Key), undefined;
+                                  true ->  ets:delete(caching,Key), [];
                                   false -> X end end.
 
 % Context Variables and URL Query Strings from ?REQ and ?CTX n2o:q/1 n2o:qc/[1,2]
