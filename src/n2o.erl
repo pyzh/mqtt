@@ -97,7 +97,7 @@ on_message_publish(Message = #mqtt_message{topic = <<"actions/",
     io:format("on_message_publish: ~p~n", [{actions, Topic, From}]),
     {ok, Message};
 
-% TODO: Move to DHT Supervisor with subscription to events/#
+% TODO: Move to DHT Supervisor with subscription to events/vnode/:id
 
 on_message_publish(Message = #mqtt_message{topic = <<"events/",
                    RestTopic/binary>>,
@@ -125,7 +125,7 @@ on_message_publish(Message, _) ->
 % TODO: Eliminate qos=0 limitation
 
 send_reply(ClientId, Topic, Message) ->
-    io:format("Send Reply: ~p~n",[{ClientId, Topic, size(Message)}]),
+%    io:format("Send Reply: ~p~n",[{ClientId, Topic, size(Message)}]),
     spawn(fun() -> emqttd:publish(emqttd_message:make(ClientId, Topic, Message)) end).
 
 on_message_delivered(ClientId, _Username, Message, _Env) ->
