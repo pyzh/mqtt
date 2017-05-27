@@ -12,9 +12,9 @@
 
 %% Topics Format:
 %% Client:
-%% actions/init/emqttd_198234215548221
+%% actions/emqttd_198234215548221
 %% Server:
-%% events/index/anon/emqttd_198234215548221
+%% events/index/maxim@synrc.com/emqttd_198234215548221
 %% events/login/anon/emqttd_198234215548221
 
 load(Env) ->
@@ -39,18 +39,15 @@ start(_,_) -> load([]), X = supervisor:start_link({local,n2o},n2o, []),
 init([])   -> [ ets:new(T,opt()) || T <- tables() ],
               { ok, { { one_for_one, 5, 10 }, [] } }.
 
-get_client_id() ->
-    {_, NPid, _} = emqttd_guid:new(),
-    iolist_to_binary(["emqttd_", integer_to_list(NPid)]).
-
-% Very Simple Router, No Server Processes
+% Dead Simple Router, No Server Processes Involved
+% NO ECHO, Limited QoS = 0 for sending actions
 
 on_client_connected(ConnAck, Client = #mqtt_client{client_id  = ClientId,
                                                    client_pid = ClientPid,
                                                    username   = Username}, Env) ->
     io:format("~n~nclient ~p connected, connack: ~p~n", [ClientId, {Username, ConnAck, Env}]),
     Replace = fun(Topic) -> rep(<<"%u">>, Username, rep(<<"%c">>, ClientId, Topic)) end,
-    Topics = [{<<"actions/init/%c">>, 0}],
+    Topics = [{<<"actions/%c">>, 0}],
     TopicTable = [{Replace(Topic), Qos} || {Topic, Qos} <- Topics],
     ClientPid ! {subscribe, TopicTable},
     ClientPid = self(),
@@ -95,7 +92,7 @@ on_session_terminated(ClientId, Username, Reason, _Env) ->
 
 on_message_publish(Message = #mqtt_message{topic = <<"actions/", 
                    RestTopic/binary>> = Topic, 
-                   from=From, 
+                   from=From,
                    payload = Payload}, _Env) ->
     io:format("on_message_publish: ~p~n", [{actions, Topic, From, self()}]),
     {ok, Message};
@@ -110,7 +107,7 @@ on_message_publish(Message = #mqtt_message{topic = <<"events/",
     io:format("BERT: ~p~n",[{BERT,Address}]),
     case Address of
          [Mod, U, JavaScriptId] ->
-         ReplyTopic = iolist_to_binary(["actions/init/",ClientId]),
+         ReplyTopic = iolist_to_binary(["actions/",ClientId]),
          Module     = erlang:binary_to_atom(Mod, utf8),
          Cx         = #cx{module=Module,session=ClientId,formatter=bert},
          put(context,Cx),
