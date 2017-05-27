@@ -106,7 +106,7 @@ on_message_publish(Message = #mqtt_message{topic = <<"events/",
                    from={ClientId,_},
                    payload = Payload}, _Env) ->
     Address = emqttd_topic:words(RestTopic),
-    BERT    = binary_to_term(Payload),
+    BERT    = binary_to_term(Payload,[safe]),
     io:format("on_message_publish: ~p~n", [{events, Topic, ClientId}]),
     io:format("BERT: ~p~n",[{BERT,Address}]),
     case Address of
