@@ -102,23 +102,22 @@ on_message_publish(Message = #mqtt_message{topic = <<"actions/",
 % TODO: Move to DHT Supervisor
 
 on_message_publish(Message = #mqtt_message{topic = <<"events/",
-                   RestTopic/binary>> = Topic,
+                   RestTopic/binary>>,
                    from={ClientId,_},
                    payload = Payload}, _Env) ->
     Address = emqttd_topic:words(RestTopic),
     BERT    = binary_to_term(Payload,[safe]),
-    io:format("on_message_publish: ~p~n", [{events, Topic, ClientId}]),
+    io:format("on_message_publish: ~p~n", [{events, RestTopic, ClientId}]),
     io:format("BERT: ~p~n",[{BERT,Address}]),
     case Address of
          [Mod, U, JavaScriptId] ->
-         ReplyTopic = iolist_to_binary(["actions/",ClientId]),
+         Topic = iolist_to_binary(["actions/",ClientId]),
          Module     = erlang:binary_to_atom(Mod, utf8),
          Cx         = #cx{module=Module,session=ClientId,formatter=bert},
          put(context,Cx),
          n2o:cache(ClientId,Cx),
          case n2o_proto:info(BERT,[],Cx) of
-              {reply, {binary, M}, _, _} ->
-                      emqttd:publish(emqttd_message:make(ClientId, ReplyTopic, M));
+            {reply, {binary, Msg}, _, _} -> send_reply(ClientId, Topic, Msg);
             Return -> io:format("ERR: Invalid Return ~p~n",[Return]),   ok end;
            Address -> io:format("ERR: Unknown Address ~p~n",[Address]), ok end,
     {ok, Message};
@@ -133,6 +132,9 @@ on_message_publish(Message = #mqtt_message{topic = Topic,
                    from=_,
                    payload = Payload}, _Env) ->
     {ok,Message}.
+
+send_reply(ClientId, Topic, Message) ->
+    spawn(fun() -> emqttd:publish(emqttd_message:make(ClientId, Topic, Message)) end).
 
 on_message_delivered(ClientId, _Username, Message = #mqtt_message{topic = Topic, payload = Payload}, _Env) ->
     io:format("message ~p delivered.\r~n", [ClientId]),

@@ -71,7 +71,6 @@ render_actions(Actions) ->
 % n2o events
 
 html_events({pickle,Source,Pickled,Linked}=Pickle, State) ->
-    io:format("Pickle: ~tp",[Pickle]),
     Ev = n2o:depickle(Pickled),
     case Ev of
          #ev{} -> render_ev(Ev,Source,Linked,State);
