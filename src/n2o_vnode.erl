@@ -31,9 +31,9 @@ proc({publish, Topic, Payload}, State=#handler{name = Name, state = C,seq=S}) ->
          put(context,Cx),
          case n2o_proto:info(BERT,[],Cx) of % NITRO, HEART, ROSTER, FTP protocols....
             {reply, {binary, Msg}, _, _} -> emqttc:publish(C, RTopic, Msg, [{qos,0}]);
-            Return -> io:format("ERR: Invalid Return ~p~n",  [Return]), 
+            Return -> %io:format("ERR: Invalid Return ~p~n",  [Return]), 
                       ok end;
-           Address -> io:format("ERR: Unknown Address ~p~n",[Address]), 
+           Address -> %io:format("ERR: Unknown Address ~p~n",[Address]), 
                       ok end,
     {reply,ok,State#handler{seq = S+1}};
 

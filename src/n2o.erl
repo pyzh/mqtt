@@ -45,14 +45,16 @@ init([])   -> [ ets:new(T,opt()) || T <- tables() ],
 % MQTT vs OTP benchmarks
 
 bench() -> [bench_mqtt(),bench_otp()].
+run()   -> 10000.
 
-bench_mqtt() -> N = 30000, {T,_} = timer:tc(fun() -> [ begin Y = nitro:to_list(X rem 16), 
+bench_mqtt() -> N = run(), {T,_} = timer:tc(fun() -> [ begin Y = nitro:to_list(X rem 16), 
     n2o:send_reply(<<>>,iolist_to_binary(["events/",Y]),term_to_binary([])) 
                                end || X <- lists:seq(1,N) ], ok end),
            {mqtt,trunc(N*1000000/T),"msgs/s"}.
 
-bench_otp() -> N = 100000, {T,_} = timer:tc(fun() ->
-     [ n2o:ring_send({publish, <<"events/1/index/anon/room/">>, term_to_binary(X)}) 
+bench_otp() -> N = run(), {T,_} = timer:tc(fun() ->
+     [ n2o:ring_send({publish, nitro:to_binary("events/" ++ nitro:to_list((X rem length(n2o:ring())) + 1) ++
+                 "/index/anon/room/"), term_to_binary(X)}) 
                 || X <- lists:seq(1,N) ], ok end),
            {otp,trunc(N*1000000/T),"msgs/s"}.
 
@@ -113,7 +115,6 @@ on_session_terminated(ClientId, _Username, _Reason, _Env) ->
 on_message_publish(Message = #mqtt_message{topic = <<"actions/",
                    _/binary>> = Topic,
                    from=From}, _Env) ->
-    io:format("on_message_publish: ~tp.\r~n", [Topic]),
     {ok, Message};
 
 on_message_publish(Message = #mqtt_message{topic = <<"events/",
@@ -125,9 +126,7 @@ on_message_publish(Message = #mqtt_message{topic = <<"events/",
 on_message_publish(Message, _) ->
     {ok,Message}.
 
-
 on_message_delivered(ClientId, _Username, Message, _Env) ->
-    io:format("message ~p delivered.\r~n", [Message#mqtt_message.topic]),
     {ok,Message}.
 
 on_message_acked(ClientId, _Username, Message, _Env) ->

@@ -53,7 +53,7 @@ lookup_index(KeyIndex) ->
     true = (KeyIndex >= 0) andalso (KeyIndex < 65536),
     case bsearch(Ring, KeyIndex) of
         empty -> [];
-        PartIdx -> {ring,PartIdx}
+        PartIdx -> {ring,PartIdx+1}
     end.
 
 set_opaque({Name, Opaque}) ->
