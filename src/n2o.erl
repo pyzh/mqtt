@@ -125,6 +125,7 @@ on_message_publish(Message, _) ->
 % TODO: Eliminate qos=0 limitation
 
 send_reply(ClientId, Topic, Message) ->
+    io:format("Send Reply: ~p~n",[{ClientId, Topic, size(Message)}]),
     spawn(fun() -> emqttd:publish(emqttd_message:make(ClientId, Topic, Message)) end).
 
 on_message_delivered(ClientId, _Username, Message, _Env) ->

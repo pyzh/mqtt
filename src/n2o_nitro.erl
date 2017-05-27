@@ -25,9 +25,9 @@ info({init,_Rest},Req,State = #cx{module = Module}) ->
              {reply,n2o:format({io,<<>>,E}),
                     Req,State} end;
 
-info({client,Message}, Req, State) ->
+info({client,Id,Topic,Message}=Client, Req, State) ->
     Module = State#cx.module,
-    Reply = try Module:event({client,Message})
+    Reply = try Module:event(Client)
           catch E:R -> Error = n2o:stack(E,R),
                        io:format("Catch: ~p:~p~n~p",Error), Error end,
     {reply,n2o:format({io,render_actions(n2o:actions()),Reply}),Req,State};

@@ -17,21 +17,21 @@
 
 % IO protocol
 
--record(io,      { eval, data }).
--record(bin,     { data }).
--record(client,  { data }).
--record(server,  { data }).
+-record(io,      { eval=[], data=[] }).
+-record(bin,     { data=[] }).
+-record(client,  { id=[], topic=[], data=[] }).
+-record(server,  { data=[] }).
 
 % Nitrogen Protocol
 
--record(pickle,  { source, pickled, args }).
--record(flush,   { data }).
--record(direct,  { data }).
--record(ev,      { module, msg, trigger, name }).
+-record(pickle,  { source=[], pickled=[], args=[] }).
+-record(flush,   { data=[] }).
+-record(direct,  { data=[] }).
+-record(ev,      { module=[], msg=[], trigger=[], name=[] }).
 
 % File Transfer Protocol
 
--record(ftp,     { id, sid, filename, meta, size, offset, block, data, status }).
--record(ftpack,  { id, sid, filename, meta, size, offset, block, data, status }).
+-record(ftp,     { id=[], sid=[], filename=[], meta=[], size=[], offset=[], block=[], data=[], status=[] }).
+-record(ftpack,  { id=[], sid=[], filename=[], meta=[], size=[], offset=[], block=[], data=[], status=[] }).
 
 -endif.
