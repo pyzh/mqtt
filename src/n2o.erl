@@ -110,7 +110,7 @@ on_message_publish(Message = #mqtt_message{topic = <<"events/",
     case Address of
          [Mod, _Username, _JavaScriptId] ->
          Topic  = iolist_to_binary(["actions/",ClientId]),
-         Module = erlang:binary_to_atom(Mod, utf8),
+         Module = binary_to_atom(Mod, utf8),
          Cx     = #cx{module=Module,session=ClientId,formatter=bert},
          put(context,Cx),
          case n2o_proto:info(BERT,[],Cx) of
