@@ -9,6 +9,11 @@ debug(Name,Topic,BERT,Address) ->
     io:format("BERT: ~tp\r~nAddress: ~p\r~n",[BERT,Address]),
     io:format("on_message_publish1: ~s.\r~n", [Topic]).
 
+qos({init,<<>>}) -> 0;
+qos(_)           -> 2.
+
+send(C,T,M,BERT) -> emqttc:publish(C, T, M, [{qos,qos(BERT)}]).
+
 proc(init,#handler{name=Name}=Async) ->
     io:format("VNode Init: ~p\r~n",[Name]),
     {ok, C} = emqttc:start_link([{host, "127.0.0.1"}, 
@@ -20,22 +25,20 @@ proc(init,#handler{name=Name}=Async) ->
 proc({publish, Topic, Payload}, State=#handler{name = Name, state = C,seq=S}) ->
     Address = emqttd_topic:words(Topic),
     BERT    = binary_to_term(Payload,[safe]),
-    case application:get_env(n2o,dump_loop,no) of
+    case application:get_env(n2o,dump_loop,yes) of
          yes -> debug(Name,Topic,BERT,Address);
            _ -> skip end,
-    case Address of
+    Return = case Address of
          [Srv, Node, Mod, Username, ClientId|_] ->
          RTopic  = iolist_to_binary(["actions/",Mod,"/",ClientId]),
          Module = binary_to_atom(Mod, utf8),
          Cx     = #cx{module=Module,session=ClientId,formatter=bert},
          put(context,Cx),
          case n2o_proto:info(BERT,[],Cx) of % NITRO, HEART, ROSTER, FTP protocols....
-            {reply, {binary, Msg}, _, _} -> emqttc:publish(C, RTopic, Msg, [{qos,0}]);
-            Return -> %io:format("ERR: Invalid Return ~p~n",  [Return]), 
-                      ok end;
-           Address -> %io:format("ERR: Unknown Address ~p~n",[Address]), 
-                      ok end,
-    {reply,ok,State#handler{seq = S+1}};
+            {reply, {binary, Msg}, _, _} -> send(C, RTopic, Msg, BERT);
+             Reply -> {error,{"ERR: Invalid Return",Reply}} end;
+           Address -> {error,{"ERR: Unknown Address",Address}} end,
+    {reply,Return,State#handler{seq = S+1}};
 
 proc({mqttc, C, connected}, State=#handler{name=Name,state = C,seq=S}) ->
     emqttc:subscribe(C, iolist_to_binary([<<"events/">>,nitro:to_list(Name),"/#"]), 2),
