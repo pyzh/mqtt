@@ -1,9 +1,13 @@
 -module(n2o_ring).
--description('N2O Consistent Hash Ring').
+-description('N2O Ring: Node Ring Manager').
 -copyright('Synrc Research Center').
 -include("n2o.hrl").
 -compile(export_all).
 -record(state, { ring, nodes }).
+
+send(Msg) ->
+    {ring,VNode} = n2o_ring:lookup(Msg),
+    n2o_async:send(ring,VNode,Msg).
 
 node_shares() ->
     Partitions = partitions(),

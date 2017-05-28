@@ -1,18 +1,28 @@
 -module(n2o_vnode).
+-license('ISC').
+-copyright('Synrc Research Center').
+-description('N2O Remote: Virtual Node Server').
+-author('Maxim Sokhatsky').
 -include("n2o.hrl").
 -compile(export_all).
 
 % N2O VNODE SERVER for MQTT
 
 debug(Name,Topic,BERT,Address) ->
+    case application:get_env(n2o,dump_loop,no) of
+         yes -> 
     io:format("VNODE:~p Message on topic ~tp.\r~n", [Name, Topic]),
     io:format("BERT: ~tp\r~nAddress: ~p\r~n",[BERT,Address]),
-    io:format("on_message_publish1: ~s.\r~n", [Topic]).
+    io:format("on_message_publish1: ~s.\r~n", [Topic]),
+                ok;
+           _ -> skip end.
 
 qos({init,<<>>}) -> 0;
 qos(_)           -> 2.
 
 send(C,T,M,BERT) -> emqttc:publish(C, T, M, [{qos,qos(BERT)}]).
+
+% Performed on VNODE init
 
 proc(init,#handler{name=Name}=Async) ->
     io:format("VNode Init: ~p\r~n",[Name]),
@@ -22,35 +32,43 @@ proc(init,#handler{name=Name}=Async) ->
                                  {reconnect, 5}]),
     {ok,Async#handler{state=C,seq=0}};
 
-proc({publish, Topic, Payload}, State=#handler{name = Name, state = C,seq=S}) ->
-    Address = emqttd_topic:words(Topic),
-    BERT    = binary_to_term(Payload,[safe]),
-    case application:get_env(n2o,dump_loop,yes) of
-         yes -> debug(Name,Topic,BERT,Address);
-           _ -> skip end,
-    Return = case Address of
-         [Srv, Node, Mod, Username, ClientId|_] ->
-         RTopic  = iolist_to_binary(["actions/",Mod,"/",ClientId]),
-         Module = binary_to_atom(Mod, utf8),
-         Cx     = #cx{module=Module,session=ClientId,formatter=bert},
-         put(context,Cx),
-         case n2o_proto:info(BERT,[],Cx) of % NITRO, HEART, ROSTER, FTP protocols....
-            {reply, {binary, Msg}, _, _} -> send(C, RTopic, Msg, BERT);
-             Reply -> {error,{"ERR: Invalid Return",Reply}} end;
-           Address -> {error,{"ERR: Unknown Address",Address}} end,
-    {reply,Return,State#handler{seq = S+1}};
+% RPC over MQTT: All N2O messages go through this loop
 
-proc({mqttc, C, connected}, State=#handler{name=Name,state = C,seq=S}) ->
-    emqttc:subscribe(C, iolist_to_binary([<<"events/">>,nitro:to_list(Name),"/#"]), 2),
-    {ok,State#handler{seq = S+1}};
+proc({publish, To, Request},
+    State  = #handler{name=Name,state=C,seq=S}) ->
+    Addr   = emqttd_topic:words(To),
+    Bert   = binary_to_term(Request,[safe]),
+    Return = case Addr of
+         [ Origin, Node, Module, Username, Id | _ ] ->
+         From = nitro:to_binary(["actions/",Module,"/",Id]),
+         Ctx  = #cx { module=nitro:to_atom(Module), session=Id },
+         % NITRO, HEART, ROSTER, FTP protocol loop
+         case n2o_proto:info(Bert,[],Ctx) of 
+              { reply, { binary, Response }, _ , _ } 
+                    -> { ok,    send(C, From, Response, Bert) };
+              Reply -> { error, {"ERR: Invalid Return",Reply} } end;
+               Addr -> { error, {"ERR: Unknown Address",Addr} } end,
+    debug(Name,To,Bert,Addr),
+    {reply, Return, State#handler{seq=S+1}};
+
+% On connection subscribe to Server Events: "events/:node/#"
+
+proc({mqttc, C, connected}, State=#handler{name=Name,state=C,seq=S}) ->
+    emqttc:subscribe(C, nitro:to_binary([<<"events/">>,
+                        nitro:to_list(Name),"/#"]), 2),
+    {ok, State#handler{seq = S+1}};
+
+% Examples:
 
 % > n2o_async:send(ring,2,"maxim").
 % VNODE 2 Unknown Message: "maxim"
 % {uknown,"maxim",3}
 
-% > n2o:ring_send("hello").
+% > n2o_ring:send("hello").
 % VNODE 1 Unknown Message: "hello"
 % {uknown,"hello",2}
+
+% Catch Unknown Messages
 
 proc(Unknown,#handler{state=C,name=Name,seq=S}=Async) ->
 %    io:format("VNODE ~p Unknown Message: ~p\r~n",[Name,Unknown]),

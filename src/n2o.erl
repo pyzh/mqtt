@@ -53,15 +53,10 @@ bench_mqtt() -> N = run(), {T,_} = timer:tc(fun() -> [ begin Y = nitro:to_list(X
            {mqtt,trunc(N*1000000/T),"msgs/s"}.
 
 bench_otp() -> N = run(), {T,_} = timer:tc(fun() ->
-     [ n2o:ring_send({publish, nitro:to_binary("events/" ++ nitro:to_list((X rem length(n2o:ring())) + 1) ++
+     [ n2o_ring:send({publish, nitro:to_binary("events/" ++ nitro:to_list((X rem length(n2o:ring())) + 1) ++
                  "/index/anon/room/"), term_to_binary(X)}) 
                 || X <- lists:seq(1,N) ], ok end),
            {otp,trunc(N*1000000/T),"msgs/s"}.
-
-% Dead Simple Plugin Filter
-% No Server Processes Involved
-% No Echo
-% Limited QoS = 0 for sending actions
 
 on_client_connected(ConnAck, Client=#mqtt_client{client_id= <<"emqttc",_/bytes>>}, _) ->
    {ok, Client};
@@ -96,7 +91,7 @@ on_session_subscribed(<<"emqttd",_/bytes>> = ClientId,
           Username, {<<"actions",_/bytes>> = Topic, Opts}, _Env) ->
     io:format("session ~p subscribed: ~p.\r~n", [ClientId, Topic]),
     {ring,VNode} = n2o_ring:lookup(ClientId),
-    n2o:ring_send({publish,
+    n2o_ring:send({publish,
       iolist_to_binary(["events/",VNode,"/",Username,"/anon/",ClientId]), 
         term_to_binary({init,<<>>})}),
     {ok, {Topic, Opts}};
@@ -146,18 +141,9 @@ unload() ->
 
 % TODO: Eliminate qos=0 limitation
 
-ring_send(Msg) ->
-    {ring,VNode} = n2o_ring:lookup(Msg),
-    n2o_async:send(ring,VNode,Msg).
-
 send_reply(ClientId, Topic, Message) -> send_reply(ClientId, 0, Topic, Message).
 send_reply(ClientId, QoS, Topic, Message) ->
     emqttd:publish(emqttd_message:make(ClientId, QoS, Topic, Message)).
-
-send_reply_async(ClientId, Topic, Message) -> send_reply_async(ClientId, 0, Topic, Message).
-send_reply_async(ClientId, QoS, Topic, Message) ->
-    spawn(fun() -> emqttd:publish(emqttd_message:make(ClientId, QoS, Topic, Message)) end).
-
 
 rep(<<"%c">>, ClientId, Topic)  -> emqttd_topic:feed_var(<<"%c">>, ClientId,   Topic);
 rep(<<"%u">>, undefined, Topic) -> emqttd_topic:feed_var(<<"%u">>, <<"anon">>, Topic);
@@ -205,7 +191,6 @@ proc({timer,ping},#handler{state=Timer}=Async) ->
     io:format("n2o Timer: ~p\r~n",[ping]),
     n2o:invalidate_cache(),
     {reply,ok,Async#handler{state=timer_restart(ping())}}.
-
 
 timer_restart(Diff) -> {X,Y,Z} = Diff, erlang:send_after(1000*(Z+60*Y+60*60*X),self(),{timer,ping}).
 ping() -> application:get_env(n2o,timer,{0,10,0}).

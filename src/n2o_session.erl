@@ -1,4 +1,5 @@
 -module(n2o_session).
+-description('N2O Session: Device Token Generation').
 -compile(export_all).
 
 authenticate(ClientSessionId, ClientSessionToken) ->
