@@ -46,11 +46,11 @@ delete(Nodes) ->
     end.
 
 get_config() -> application:get_env(n2o,nodes,[]).
-ring() -> application:get_env(n2o,ring,[]).
-ring_list() -> array:to_list(ring()).
-lookup(Key) -> lookup_index(index1(Key)).
+ring()       -> application:get_env(n2o,ring,[]).
+ring_list()  -> array:to_list(ring()).
+lookup(Key)  -> lookup_index(index1(Key)).
 partitions() -> partitions_from_ring(ring()).
-nodes() -> [{Name, Opaque} || {Name, Opaque, _} <- get_config() ].
+nodes()      -> [{Name, Opaque} || {Name, Opaque, _} <- get_config() ].
 
 lookup_index(KeyIndex) ->
     Ring = application:get_env(n2o,ring,[]),

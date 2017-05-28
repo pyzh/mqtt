@@ -34,6 +34,10 @@ proc(init,#handler{name=Name}=Async) ->
 
 % RPC over MQTT: All N2O messages go through this loop
 
+% > n2o_ring:send({publish,
+%             <<"events/4/index/anon/emqttd_198234215547984">>,
+%              term_to_binary({client,1,2,{user,message}})}).
+
 proc({publish, To, Request},
     State  = #handler{name=Name,state=C,seq=S}) ->
     Addr   = emqttd_topic:words(To),
@@ -45,7 +49,8 @@ proc({publish, To, Request},
          % NITRO, HEART, ROSTER, FTP protocol loop
          case n2o_proto:info(Bert,[],Ctx) of 
               { reply, { binary, Response }, _ , _ } 
-                    -> { ok,    send(C, From, Response, Bert) };
+                    -> % io:format("Response: ~tp~n",[binary_to_term(Response)]),
+                       { ok,    send(C, From, Response, Bert) };
               Reply -> { error, {"ERR: Invalid Return",Reply} } end;
                Addr -> { error, {"ERR: Unknown Address",Addr} } end,
     debug(Name,To,Bert,Addr),

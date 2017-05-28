@@ -13,21 +13,21 @@ authenticate(ClientSessionId, ClientSessionToken) ->
             Token = {{NewSID,<<"auth">>},os:timestamp(),Expiration},
             ets:insert(cookies,Token),
             io:format("Auth Token New: ~p~n~p~n~n", [Token, ClientToken]),
-            {ok, ClientToken};
+            {'Token', ClientToken};
         ExistingToken ->
             SessionId = decode_token(ClientSessionToken),
             case SessionId of
-                undefined -> {fail, "Invalid token signature"};
+                undefined -> {error, "Invalid token signature"};
                 Val ->
                  Lookup = lookup_ets({SessionId,<<"auth">>}),
                  InnerResponse = case Lookup of
-                    [] -> {fail, "Invalid authentication token"};
+                    [] -> {error, "Invalid authentication token"};
                     {{TokenValue,Key},Issued,Till} ->
                         case expired(Issued,Till) of
                             false ->
                                 Token = {{TokenValue,Key},Issued,Till},
                                 io:format("Auth Token Ok: ~p~n", [Token]),
-                                {ok, ExistingToken};
+                                {'Token', ExistingToken};
                             true ->
                                 UpdatedSID = generate_sid(),
                                 UpdatedClientToken = encode_token(UpdatedSID),
@@ -35,9 +35,9 @@ authenticate(ClientSessionId, ClientSessionToken) ->
                                 delete_old_token(TokenValue),
                                 ets:insert(cookies,Token),
                                 io:format("Auth Token Expired: ~p~nGenerated new token ~p~n", [TokenValue, Token]),
-                                {ok, UpdatedClientToken} end;
+                                {'Token', UpdatedClientToken} end;
                     What -> io:format("Auth Cookie Error: ~p~n",[What]), {fail, What} end,
-             InnerResponse end
+                 InnerResponse end
         end,
     Response.
 
