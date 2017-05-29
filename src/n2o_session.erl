@@ -116,7 +116,7 @@ negative_test3() ->
     TokenWasChanged = TokenA/=TokenB,
     {'Token', TokenC} = n2o_session:authenticate("", TokenB),
     NewTokenIsValid = TokenB == TokenC,
-    TokenWasChanged==TokenWasChanged.
+    TokenWasChanged == NewTokenIsValid.
 
 % TODO:
 % 1. plug n2o:session API to cookies ETS
