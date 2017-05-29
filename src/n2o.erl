@@ -32,7 +32,7 @@ load(Env) ->
 tables()   -> [ cookies, caching ].
 opt()      -> [ set, named_table, { keypos, 1 }, public ].
 stop(_)    -> unload(), ok.
-start(_,_) -> load([]), X = supervisor:start_link({local,n2o},n2o, []),
+start(_,_) -> catch load([]), X = supervisor:start_link({local,n2o},n2o, []),
               n2o_async:start(#handler{module=?MODULE,class=system,group=n2o,state=[],name="timer"}),
               [ n2o_async:start(#handler{module=n2o_vnode,class=ring,group=n2o,state=[],name=Pos})
                 || {{Name,Nodes},Pos} <- lists:zip(ring(),lists:seq(1,length(ring()))) ],
