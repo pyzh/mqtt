@@ -91,7 +91,7 @@ get_value(SID, Key, DefaultValue) ->
     Res.
 
 test() ->
-  {ok,B}=n2o_session:authenticate("",""),
+  {'Token',B}=n2o_session:authenticate("",""),
   32=size(n2o_session:decode_token(B)),
-  {ok,C}=n2o_session:authenticate("",B),
+  {'Token',C}=n2o_session:authenticate("",B),
   true=(C==B).
