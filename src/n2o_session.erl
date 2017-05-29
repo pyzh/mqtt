@@ -17,7 +17,7 @@ authenticate(ClientSessionId, ClientSessionToken) ->
         ExistingToken ->
             SessionId = decode_token(ClientSessionToken),
             case SessionId of
-                undefined -> {error, "Invalid token signature"};
+                [] -> {error, "Invalid token signature"};
                 Val ->
                  Lookup = lookup_ets({SessionId,<<"auth">>}),
                  InnerResponse = case Lookup of
@@ -90,11 +90,33 @@ set_value(SID, Key, Value) ->
     ets:insert(cookies,{{SID,Key},<<"/">>,os:timestamp(),NewTill,Value}),
     Value.
 
-test() ->
+positive_test() ->
   {'Token',B}=n2o_session:authenticate("",""),
   32=size(n2o_session:decode_token(B)),
   {'Token',C}=n2o_session:authenticate("",B),
   true=(C==B).
+
+negative_test1() ->
+    InputValue = os:timestamp(),
+    {error, Reason} = n2o_session:authenticate("", InputValue),
+    Reason=="Invalid token signature".
+
+negative_test2() ->
+    InputValue = n2o_secret:pickle(os:timestamp()),
+    io:format("Rand ~p~n", [InputValue]),
+    {error, Reason} = n2o_session:authenticate("", InputValue),
+    Reason=="Invalid authentication token".
+
+negative_test3() ->
+    application:set_env(n2o, ttl, 2),
+    {'Token', TokenA} = n2o_session:authenticate("", ""),
+    timer:sleep(3000),
+    {'Token', TokenB} = n2o_session:authenticate("", TokenA),
+    application:set_env(n2o, ttl, 60*15),
+    TokenWasChanged = TokenA/=TokenB,
+    {'Token', TokenC} = n2o_session:authenticate("", TokenB),
+    NewTokenIsValid = TokenB == TokenC,
+    TokenWasChanged==TokenWasChanged.
 
 % TODO:
 % 1. plug n2o:session API to cookies ETS
