@@ -9,7 +9,6 @@ authenticate(ClientSessionId, ClientSessionToken) ->
         [] ->
             NewSID = generate_sid(),
             ClientToken = encode_token(NewSID),
-            io:format("1 ~p~n~n", [ClientToken]),
             Token = {{NewSID,<<"auth">>},os:timestamp(),Expiration},
             ets:insert(cookies,Token),
             io:format("Auth Token New: ~p~n~p~n~n", [Token, ClientToken]),
@@ -54,7 +53,7 @@ expired(_Issued,Till) -> Till < calendar:local_time().
 
 lookup_ets(Key) ->
     Res = ets:lookup(cookies,Key),
-    io:format("Lookup ETS: ~p~n",[{Res,Key}]),
+%    io:format("Lookup ETS: ~p~n",[{Res,Key}]),
     case Res of
          [] -> [];
          [Value] -> Value;
@@ -103,7 +102,6 @@ negative_test1() ->
 
 negative_test2() ->
     InputValue = n2o_secret:pickle(os:timestamp()),
-    io:format("Rand ~p~n", [InputValue]),
     {error, Reason} = n2o_session:authenticate("", InputValue),
     Reason=="Invalid authentication token".
 
