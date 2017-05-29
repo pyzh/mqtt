@@ -9,7 +9,7 @@
 % N2O VNODE SERVER for MQTT
 
 debug(Name,Topic,BERT,Address) ->
-    case application:get_env(n2o,dump_loop,yes) of
+    case application:get_env(n2o,dump_loop,no) of
          yes -> 
     io:format("VNODE:~p Message on topic ~tp.\r~n", [Name, Topic]),
     io:format("BERT: ~tp\r~nAddress: ~p\r~n",[BERT,Address]),
