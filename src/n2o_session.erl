@@ -95,3 +95,9 @@ test() ->
   32=size(n2o_session:decode_token(B)),
   {'Token',C}=n2o_session:authenticate("",B),
   true=(C==B).
+
+% TODO:
+% 1. plug n2o:session API to cookies ETS
+% 2. session invalidation by timer
+% 3. moar tests
+
