@@ -74,13 +74,8 @@ generate_sid() ->
     nitro_conv:hex(binary:part(crypto:hmac(application:get_env(n2o,hmac,sha256),
          n2o_secret:secret(),term_to_binary(os:timestamp())),0,16)).
 
-session_id() -> get(session_id).
-
 invalidate_sessions() ->
     ets:foldl(fun(X,A) -> {Sid,Key} = element(1,X), get_value(Sid,Key,[]), A end, 0, cookies).
-
-get_value(Key, DefaultValue) ->
-    get_value(session_id(), Key, DefaultValue).
 
 get_value(SID, Key, DefaultValue) ->
     Res = case lookup_ets({SID,Key}) of
@@ -89,6 +84,11 @@ get_value(SID, Key, DefaultValue) ->
                        false -> Value;
                        true -> ets:delete(cookies,{SID,Key}), DefaultValue end end,
     Res.
+
+set_value(SID, Key, Value) ->
+    NewTill = till(calendar:local_time(), ttl()),
+    ets:insert(cookies,{{SID,Key},<<"/">>,os:timestamp(),NewTill,Value}),
+    Value.
 
 test() ->
   {'Token',B}=n2o_session:authenticate("",""),
