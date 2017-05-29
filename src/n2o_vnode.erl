@@ -45,10 +45,10 @@ proc({publish, To, Request},
     Return = case Addr of
          [ Origin, Node, Module, Username, Id | _ ] ->
          From = nitro:to_binary(["actions/",Module,"/",Id]),
-         Ctx  = #cx { module=nitro:to_atom(Module), session=Id },
+         Ctx  = #cx { module=nitro:to_atom(Module), session=Id, node=Node },
          % NITRO, HEART, ROSTER, FTP protocol loop
-         case n2o_proto:info(Bert,[],Ctx) of 
-              { reply, { binary, Response }, _ , _ } 
+         case n2o_proto:info(Bert,[],Ctx) of
+              { reply, { binary, Response }, _ , _ }
                     -> % io:format("Response: ~tp~n",[binary_to_term(Response)]),
                        { ok,    send(C, From, Response, Bert) };
               Reply -> { error, {"ERR: Invalid Return",Reply} } end;

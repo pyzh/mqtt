@@ -3,7 +3,8 @@
 -define(N2O_HRL, true).
 
 -record(handler, { name, module, class, group, config, state, seq}).
--record(cx,      { handlers, actions, req= [], module, lang, path, session, formatter=bert, params, form, state=[] }).
+-record(cx,      { handlers=[], actions=[], req=[], module=[], lang=[], path=[],
+                   session=[], formatter=bert, params=[], node=[], state=[] }).
 
 -define(CTX(ClientId), n2o:cache(ClientId)).
 -define(REQ(ClientId), (n2o:cache(ClientId))#cx.req).
