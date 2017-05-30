@@ -108,7 +108,7 @@ on_session_terminated(ClientId, _Username, _Reason, _Env) ->
     ok.
 
 on_message_publish(Message = #mqtt_message{topic = <<"actions/",
-                   _/binary>> = Topic,
+                   _/binary>>,
                    from=From}, _Env) ->
     {ok, Message};
 
