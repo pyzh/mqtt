@@ -264,17 +264,13 @@ error_page(Class,Error) ->
         [ Module,Function,Arity,proplists:get_value(line, Location) ])
     ||  { Module,Function,Arity,Location} <- erlang:get_stacktrace() ].
 
-user() -> case session(<<"user">>) of undefined -> []; E -> nitro:to_list(E) end.
-user(User) -> session(<<"user">>,User).
 
 -ifndef(SESSION).
--define(SESSION, n2o).
+-define(SESSION, n2o_session).
 -endif.
 
-session(Key) -> ?SESSION:get_value(Key,undefined).
-session(Key, Value) -> ?SESSION:set_value(Key, Value).
+session(Key)        -> #cx{session=SID}=get(context), ?SESSION:get_value(SID, Key, []).
+session(Key, Value) -> #cx{session=SID}=get(context), ?SESSION:set_value(SID, Key, Value).
+user()              -> case session(user) of undefined -> []; E -> nitro:to_list(E) end.
+user(User)          -> session(user,User).
 
-set_value(Key, Value) -> erlang:put(Key,Value).
-get_value(Key, DefaultValue) -> case erlang:get(Key) of
-                                     undefined -> DefaultValue;
-                                     Value -> Value end.
