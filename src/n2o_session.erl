@@ -116,6 +116,14 @@ negative_test3() ->
     NewTokenIsValid = TokenB == TokenC,
     TokenWasChanged == NewTokenIsValid.
 
+test_set_get_value() ->
+    InputValue = base64:encode(crypto:strong_rand_bytes(8)),
+    SID = base64:encode(crypto:strong_rand_bytes(8)),
+    Key = base64:encode(crypto:strong_rand_bytes(8)),
+    set_value(SID, Key, InputValue),
+    ResultValue = get_value(SID, Key, []),
+    InputValue == ResultValue.
+
 % TODO:
 % 1. plug n2o:session API to cookies ETS
 % 2. session invalidation by timer

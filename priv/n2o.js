@@ -29,9 +29,12 @@ var $file = {}; $file.on = function onfile(r, cb) {
     } else return { status: '' };
 }
 
+var $token = {}; $token.on = function ontoken(r, cb) { if (is(r,2,'token')) { token = r.v[2].v;
+    if (typeof cb == 'function') cb(r); return { status: "ok" }; } else return { status: '' }; }
+
 // BERT Formatter
 
-var $bert = {}; $bert.protos = [$io, $file]; $bert.on = function onbert(evt, cb) {
+var $bert = {}; $bert.protos = [$io, $file, $token]; $bert.on = function onbert(evt, cb) {
     if (Blob.prototype.isPrototypeOf(evt.data) && (evt.data.length > 0 || evt.data.size > 0)) {
         var r = new FileReader();
         r.addEventListener("loadend", function () {
