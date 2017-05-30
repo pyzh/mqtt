@@ -7,7 +7,7 @@
 
 % Nitrogen pickle handler
 
-info({init,_Rest},Req,State = #cx{module = Module}) ->
+info({init,Token},Req,State = #cx{module = Module}) ->
     case try Elements = Module:main(),
              n2o:render(Elements),
              {ok,[]}

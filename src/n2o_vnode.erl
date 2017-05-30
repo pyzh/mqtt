@@ -10,14 +10,14 @@
 
 debug(Name,Topic,BERT,Address) ->
     case application:get_env(n2o,dump_loop,yes) of
-         yes -> 
+         yes ->
     io:format("VNODE:~p Message on topic ~tp.\r~n", [Name, Topic]),
     io:format("BERT: ~tp\r~nAddress: ~p\r~n",[BERT,Address]),
     io:format("on_message_publish1: ~s.\r~n", [Topic]),
                 ok;
            _ -> skip end.
 
-qos({init,<<>>}) -> 0;
+qos({init,_})    -> 2;
 qos(_)           -> 2.
 
 send(C,T,M,BERT) -> emqttc:publish(C, T, M, [{qos,qos(BERT)}]).
@@ -43,17 +43,19 @@ proc({publish, To, Request},
     Addr   = emqttd_topic:words(To),
     Bert   = binary_to_term(Request,[safe]),
     Return = case Addr of
-         [ Origin, Node, Module, Username, Id | _ ] ->
+         [ Origin, Node, Module, Username, Id, Token | _ ] ->
          From = nitro:to_binary(["actions/",Module,"/",Id]),
-         Ctx  = #cx { module=nitro:to_atom(Module), session=Id, node=Node },
+         Ctx  = #cx { module=nitro:to_atom(Module), session=Token, node=Node, params=Id },
          % NITRO, HEART, ROSTER, FTP protocol loop
          case n2o_proto:info(Bert,[],Ctx) of
               { reply, { binary, Response }, _ , _ }
-                    -> % io:format("Response: ~tp~n",[binary_to_term(Response)]),
+                    -> io:format("Response: ~tp~n",[Response]),
                        { ok,    send(C, From, Response, Bert) };
               Reply -> { error, {"ERR: Invalid Return",Reply} } end;
                Addr -> { error, {"ERR: Unknown Address",Addr} } end,
     debug(Name,To,Bert,Addr),
+    case Return of
+         {error,R} -> io:format("ERROR: ~p~n",[R]); _ -> skip end,
     {reply, Return, State#handler{seq=S+1}};
 
 % On connection subscribe to Server Events: "events/:node/#"

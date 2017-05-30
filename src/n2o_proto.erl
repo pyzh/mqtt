@@ -12,7 +12,7 @@ filter(M,R,S,P,A)  -> {Mod,Fun} = (application:get_env(n2o,filter,{?MODULE,push}
                       put(context,S),
                       Mod:Fun(M,R,S,P,A).
 
-nop(R,S)                  -> {reply,<<>>,R,S}.
+nop(R,S)                  -> {reply,{binary,<<>>},R,S}.
 reply(M,R,S)              -> {reply,M,R,S}.
 push(_,R,S,[],_)          -> nop(R,S);
 push(M,R,S,[H|T],Acc)     ->

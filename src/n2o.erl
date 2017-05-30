@@ -87,17 +87,17 @@ on_session_created(ClientId, _Username, _Env) ->
     io:format("session ~p created.\r~n", [ClientId]),
     ok.
 
-on_session_subscribed(<<"emqttd",_/bytes>> = ClientId, 
+on_session_subscribed(<<"emqttd",_/bytes>> = ClientId,
           Username, {<<"actions",_/bytes>> = Topic, Opts}, _Env) ->
     io:format("session ~p subscribed: ~p.\r~n", [ClientId, Topic]),
     {ring,VNode} = n2o_ring:lookup(ClientId),
     n2o_ring:send({publish,
-      iolist_to_binary(["events/",VNode,"/",Username,"/anon/",ClientId]), 
-        term_to_binary({init,<<>>})}),
+      iolist_to_binary(["events/",VNode,"/",Username,"/anon/",ClientId,"/"]),
+        term_to_binary(<<>>)}),
     {ok, {Topic, Opts}};
 
 on_session_subscribed(_ClientId, _Username, {Topic, Opts}, _Env) ->
-    {ok, {Topic, Opts}}.   
+    {ok, {Topic, Opts}}.
 
 on_session_unsubscribed(ClientId, _Username, {Topic, Opts}, _Env) ->
     io:format("session ~p unsubscribed: ~p.\r~n", [ClientId, {Topic, Opts}]),
