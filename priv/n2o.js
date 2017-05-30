@@ -6,8 +6,7 @@ var active = false,
     session = "site-sid",
     protocol = window.location.protocol == 'https:' ? "wss://" : "ws://",
     querystring = window.location.pathname + window.location.search,
-    host = null == transition.host ? window.location.hostname : transition.host,
-    port = null == transition.port ? window.location.port : transition.port;
+    host = window.location.hostname;
 
 function qi(name) { return document.getElementById(name); }
 function qs(name) { return document.querySelector(name); }
