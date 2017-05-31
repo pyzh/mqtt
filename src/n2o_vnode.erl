@@ -8,19 +8,18 @@
 
 % N2O VNODE SERVER for MQTT
 
-debug(Name,Topic,BERT,Address) ->
-    case application:get_env(n2o,dump_loop,yes) of
+debug(Name,Topic,BERT,Address,Return) ->
+    case application:get_env(n2o,dump_loop,no) of
          yes ->
     io:format("VNODE:~p Message on topic ~tp.\r~n", [Name, Topic]),
     io:format("BERT: ~tp\r~nAddress: ~p\r~n",[BERT,Address]),
     io:format("on_message_publish1: ~s.\r~n", [Topic]),
+    case Return of
+          {error,R} -> io:format("ERROR: ~p~n",[R]); _ -> skip end,
                 ok;
            _ -> skip end.
 
-qos({init,_})    -> 2;
-qos(_)           -> 2.
-
-send(C,T,M,BERT) -> emqttc:publish(C, T, M, [{qos,qos(BERT)}]).
+send(C,T,M) -> emqttc:publish(C, T, M, [{qos,2}]).
 
 % Performed on VNODE init
 
@@ -45,22 +44,16 @@ proc({publish, To, Request},
     Return = case Addr of
          [ Origin, Node, Module, Username, Id, Token | _ ] ->
          From = nitro:to_binary(["actions/",Module,"/",Id]),
-         Sid = nitro:to_binary(Token),
-%         Sid = case Token of
-%              '' -> element(2,n2o_session:authenticate([],[]));
-%              T -> nitro:to_binary(T) end,
-         io:format("Token: ~p~n",[Sid]),
+         Sid  = nitro:to_binary(Token),
          Ctx  = #cx { module=nitro:to_atom(Module), session=Sid, node=Node, params=Id },
          % NITRO, HEART, ROSTER, FTP protocol loop
          case n2o_proto:info(Bert,[],Ctx) of
               { reply, { binary, Response }, _ , _ }
-                    -> %io:format("Response: ~tp~n",[Response]),
-                       { ok,    send(C, From, Response, Bert) };
+                    -> % io:format("Response: ~tp~n",[Response]),
+                       { ok,    send(C, From, Response) };
               Reply -> { error, {"ERR: Invalid Return",Reply} } end;
                Addr -> { error, {"ERR: Unknown Address",Addr} } end,
-    debug(Name,To,Bert,Addr),
-    case Return of
-         {error,R} -> io:format("ERROR: ~p~n",[R]); _ -> skip end,
+    debug(Name,To,Bert,Addr,Return),
     {reply, Return, State#handler{seq=S+1}};
 
 % On connection subscribe to Server Events: "events/:node/#"

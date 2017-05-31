@@ -96,7 +96,7 @@ on_session_subscribed(_ClientId, _Username, {Topic, Opts}, _Env) ->
     {ok, {Topic, Opts}}.
 
 on_session_unsubscribed(ClientId, _Username, {Topic, Opts}, _Env) ->
-    io:format("session ~p unsubscribed: ~p.\r~n", [ClientId, {Topic, Opts}]),
+%    io:format("session ~p unsubscribed: ~p.\r~n", [ClientId, {Topic, Opts}]),
     ok.
 
 on_session_terminated(ClientId, _Username, _Reason, _Env) ->

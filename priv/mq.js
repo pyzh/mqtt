@@ -10,8 +10,7 @@ var clientId = undefined;
 var ws = { send: function (payload, qos) {
         var message = new Paho.MQTT.Message(payload);
         message.destinationName = topic("events");
-        message.qos = qos == 0 ? 0 : 2;
-        console.log(message.destinationName);
+        message.qos = qos || 2;
         mqtt.send(message); } };
 
 var subscribeOptions = {

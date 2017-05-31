@@ -22,8 +22,6 @@ info({init, Token}, Req, State = #cx{module = Module, session = Session}) ->
              catch C:E -> Error = n2o:stack(C,E),
                           io:format("Event Init: ~p:~p~n~p~n",Error),
                           {stack,Error} end,
-            io:format("NITRO Token: ~p~n",[Token]),
-            put(token,Token),
              {reply,n2o:format({io,render_actions(n2o:actions()), {'Token', Token}}),
                     Req,State};
         {error,E} ->
