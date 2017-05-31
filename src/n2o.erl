@@ -36,7 +36,8 @@ start(_,_) -> catch load([]), X = supervisor:start_link({local,n2o},n2o, []),
               n2o_async:start(#handler{module=?MODULE,class=system,group=n2o,state=[],name="timer"}),
               [ n2o_async:start(#handler{module=n2o_vnode,class=ring,group=n2o,state=[],name=Pos})
                 || {{Name,Nodes},Pos} <- lists:zip(ring(),lists:seq(1,length(ring()))) ],
-              X.
+              emqttd_access_control:register_mod(auth, n2o_auth, [[]], 9998),
+                X.
 ring()     -> n2o_ring:ring_list().
 init([])   -> [ ets:new(T,opt()) || T <- tables() ],
               n2o_ring:init([{node(),1,4}]),
@@ -64,11 +65,11 @@ on_client_connected(ConnAck, Client=#mqtt_client{client_id= <<"emqttc",_/bytes>>
 on_client_connected(ConnAck, Client = #mqtt_client{client_id  = ClientId,
                                                    client_pid = ClientPid,
                                                    username   = Username}, Env) ->
-    Replace = fun(Topic) -> rep(<<"%u">>, Username, 
-                            rep(<<"%c">>, ClientId, Topic)) end,
-    Topics = [{<<"actions/%u/%c">>, 2}],
-    TopicTable = [{Replace(Topic), Qos} || {Topic, Qos} <- Topics],
-    ClientPid ! {subscribe, TopicTable},
+%%    Replace = fun(Topic) -> rep(<<"%u">>, Username,
+%%                            rep(<<"%c">>, ClientId, Topic)) end,
+%%    Topics = [{<<"actions/%u/%c">>, 2}],
+%%    TopicTable = [{Replace(Topic), Qos} || {Topic, Qos} <- Topics],
+%%    ClientPid ! {subscribe, TopicTable},
     {ok, Client}.
 
 on_client_disconnected(Reason, _Client = #mqtt_client{client_id = ClientId}, _Env) ->

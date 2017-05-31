@@ -9,29 +9,31 @@
 init([Listeners]) ->
     {ok, Listeners}.
 
+
+get_client_id() ->
+    {_, NPid, _} = emqttd_guid:new(),
+    iolist_to_binary(["emqttd_", integer_to_list(NPid)]).
+
 check(#mqtt_client{ws_initial_headers = undefined}, _Password, _) ->
     ignore;
-
-%%check(#mqtt_client{client_id = <<"dashboard_", _/binary>>,
-%%    username  = <<"dashboard">>,
-%%    ws_initial_headers = Headers}, _Password, Listeners) ->
-%%    Origin = proplists:get_value("Origin", Headers, ""),
-%%    case is_from_dashboard(Origin, Listeners) of
-%%        true  -> ok;
-%%        false -> ignore
-%%    end;
-
+check(#mqtt_client{client_id = <<>>,
+                    username  = Username,
+                    client_pid = ClientPid,
+                    ws_initial_headers = Headers},
+            <<"password">> = Password, _Listeners) ->
+    ClientId = get_client_id(),
+    Replace = fun(Topic) -> rep(<<"%u">>, Username,
+        rep(<<"%c">>, ClientId, Topic)) end,
+    Topics = [{<<"actions/%u/%c">>, 2}],
+    TopicTable = [{Replace(Topic), Qos} || {Topic, Qos} <- Topics],
+    ClientPid ! {subscribe, TopicTable},
+    ok;
 check(_Client, _Password, _Opts) ->
     ignore.
 
-is_from_dashboard(_Origin, []) ->
-    false;
-is_from_dashboard(Origin, [{_, Port, _}|Listeners]) ->
-    %%TODO: workaround first...
-    case string:rstr(Origin, integer_to_list(Port)) of
-        0  -> is_from_dashboard(Origin, Listeners);
-        _I -> true
-    end.
+rep(<<"%c">>, ClientId, Topic)  -> emqttd_topic:feed_var(<<"%c">>, ClientId,   Topic);
+rep(<<"%u">>, undefined, Topic) -> emqttd_topic:feed_var(<<"%u">>, <<"anon">>, Topic);
+rep(<<"%u">>, Username, Topic)  -> emqttd_topic:feed_var(<<"%u">>, Username,   Topic).
 
 description() ->
-    "Dashboard Authentication Module".
+    "N2O Authentication Module".
