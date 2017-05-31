@@ -3,9 +3,10 @@ var match, pl = /\+/g, search = /([^&=]+)=?([^&]*)/g,
     query = window.location.search.substring(1),
     nodes = 4,
     params = {}; while (match = search.exec(query)) params[decode(match[1])] = decode(match[2]);
-var l = location.pathname;
-var x = l.substring(l.lastIndexOf("/") + 1);
-var module = x.substring(0, x.lastIndexOf("."));
+var l = location.pathname,
+    x = l.substring(l.lastIndexOf("/") + 1),
+    ll = x.lastIndexOf("."),
+    module = x == "" ? "index" : (ll > 0 ? x.substring(0, ll) : x);
 var clientId = undefined;
 var ws = { send: function (payload, qos) {
         var message = new Paho.MQTT.Message(payload);
@@ -51,4 +52,5 @@ function rnd() { return Math.floor((Math.random() * nodes)+1); }
         } catch (e) { console.log(e); }
         }
     };
+    console.log(module);
   mqtt.connect(options);

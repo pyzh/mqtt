@@ -26,7 +26,7 @@ check(#mqtt_client{client_id = <<>>,
         rep(<<"%c">>, ClientId, Topic)) end,
     Topics = [{<<"actions/%u/%c">>, 2}],
     TopicTable = [{Replace(Topic), Qos} || {Topic, Qos} <- Topics],
-%    io:format("CHECK ~p~n",[Password]),
+%    io:format("CHECK ~p~n",[Username]),
     ClientPid ! {subscribe, TopicTable},
     ok;
 check(_Client, _Password, _Opts) ->
