@@ -45,11 +45,16 @@ proc({publish, To, Request},
     Return = case Addr of
          [ Origin, Node, Module, Username, Id, Token | _ ] ->
          From = nitro:to_binary(["actions/",Module,"/",Id]),
-         Ctx  = #cx { module=nitro:to_atom(Module), session=Token, node=Node, params=Id },
+         Sid = nitro:to_binary(Token),
+%         Sid = case Token of
+%              '' -> element(2,n2o_session:authenticate([],[]));
+%              T -> nitro:to_binary(T) end,
+         io:format("Token: ~p~n",[Sid]),
+         Ctx  = #cx { module=nitro:to_atom(Module), session=Sid, node=Node, params=Id },
          % NITRO, HEART, ROSTER, FTP protocol loop
          case n2o_proto:info(Bert,[],Ctx) of
               { reply, { binary, Response }, _ , _ }
-                    -> io:format("Response: ~tp~n",[Response]),
+                    -> %io:format("Response: ~tp~n",[Response]),
                        { ok,    send(C, From, Response, Bert) };
               Reply -> { error, {"ERR: Invalid Return",Reply} } end;
                Addr -> { error, {"ERR: Unknown Address",Addr} } end,

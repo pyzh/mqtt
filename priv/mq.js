@@ -11,6 +11,7 @@ var ws = { send: function (payload, qos) {
         var message = new Paho.MQTT.Message(payload);
         message.destinationName = topic("events");
         message.qos = qos == 0 ? 0 : 2;
+        console.log(message.destinationName);
         mqtt.send(message); } };
 
 var subscribeOptions = {
@@ -27,7 +28,8 @@ var options = {
     onFailure: function (m) { console.log("N2O Connection failed: " + m.errorMessage); },
     onSuccess: function ()  { console.log("N2O Connected");
                             } };
-function topic(prefix) { return prefix + "/" + rnd() + "/" + module + "/anon/" + clientId + "/" + token; }
+function token() { return localStorage.getItem("token")||''; };
+function topic(prefix) { return prefix + "/" + rnd() + "/" + module + "/anon/" + clientId + "/" + token(); }
 function rnd() { return Math.floor((Math.random() * nodes)+1); }
 
   mqtt = new Paho.MQTT.Client(host, 8083, '');
@@ -37,9 +39,8 @@ function rnd() { return Math.floor((Math.random() * nodes)+1); }
         {
             words = m.destinationName.split("/");
             clientId = words[2];
-            console.log(clientId + " init sent");
-            token = '1';
-            ws.send(enc(tuple(atom('init'),bin(token))));
+            console.log(clientId);
+            ws.send(enc(tuple(atom('init'),bin(token()))));
         } else {
         var BERT = m.payloadBytes.buffer.slice(m.payloadBytes.byteOffset,
             m.payloadBytes.byteOffset + m.payloadBytes.length);

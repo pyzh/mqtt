@@ -65,11 +65,6 @@ on_client_connected(ConnAck, Client=#mqtt_client{client_id= <<"emqttc",_/bytes>>
 on_client_connected(ConnAck, Client = #mqtt_client{client_id  = ClientId,
                                                    client_pid = ClientPid,
                                                    username   = Username}, Env) ->
-%%    Replace = fun(Topic) -> rep(<<"%u">>, Username,
-%%                            rep(<<"%c">>, ClientId, Topic)) end,
-%%    Topics = [{<<"actions/%u/%c">>, 2}],
-%%    TopicTable = [{Replace(Topic), Qos} || {Topic, Qos} <- Topics],
-%%    ClientPid ! {subscribe, TopicTable},
     {ok, Client}.
 
 on_client_disconnected(Reason, _Client = #mqtt_client{client_id = ClientId}, _Env) ->

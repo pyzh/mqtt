@@ -3,7 +3,7 @@
 -include("emqttd.hrl").
 
 -behaviour(emqttd_auth_mod).
-
+-compile(export_all).
 -export([init/1, check/3, description/0]).
 
 init([Listeners]) ->
@@ -26,6 +26,7 @@ check(#mqtt_client{client_id = <<>>,
         rep(<<"%c">>, ClientId, Topic)) end,
     Topics = [{<<"actions/%u/%c">>, 2}],
     TopicTable = [{Replace(Topic), Qos} || {Topic, Qos} <- Topics],
+    io:format("CHECK ~p~n",[Password]),
     ClientPid ! {subscribe, TopicTable},
     ok;
 check(_Client, _Password, _Opts) ->

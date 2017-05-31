@@ -18,6 +18,10 @@ function co(name) { match = document.cookie.match(new RegExp(name + '=([^;]+)'))
 
 var $io = {}; $io.on = function onio(r, cb) {
     if (is(r, 3, 'io')) {
+        if (r.v[2].v != undefined && r.v[2].v[1] != undefined){
+          tok = String.fromCharCode.apply(null, new Uint8Array(r.v[2].v[1].v));
+          localStorage.setItem("token",tok);
+        }
         try { eval(utf8_dec(r.v[1].v)); if (typeof cb == 'function') cb(r); return { status: "ok" }; }
         catch (e) { console.log(e); return { status: '' }; }
     } else return { status: '' };
@@ -29,7 +33,7 @@ var $file = {}; $file.on = function onfile(r, cb) {
     } else return { status: '' };
 }
 
-var $token = {}; $token.on = function ontoken(r, cb) { if (is(r,2,'token')) { token = r.v[2].v;
+var $token = {}; $token.on = function ontoken(r, cb) { if (is(r,2,'Token')) {
     if (typeof cb == 'function') cb(r); return { status: "ok" }; } else return { status: '' }; }
 
 // BERT Formatter
