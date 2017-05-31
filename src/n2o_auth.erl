@@ -1,6 +1,6 @@
 -module(n2o_auth).
 
--include_lib("emqttd/include/emqttd.hrl").
+-include("emqttd.hrl").
 
 -behaviour(emqttd_auth_mod).
 
