@@ -20,6 +20,8 @@ debug(Name,Topic,BERT,Address,Return) ->
            _ -> skip end.
 
 send(C,T,M) -> emqttc:publish(C, T, M, [{qos,2}]).
+fix(<<"index">>) -> index;
+fix(Module) -> login.
 
 % Performed on VNODE init
 
@@ -45,7 +47,8 @@ proc({publish, To, Request},
          [ Origin, Node, Module, Username, Id, Token | _ ] ->
          From = nitro:to_binary(["actions/",Module,"/",Id]),
          Sid  = nitro:to_binary(Token),
-         Ctx  = #cx { module=nitro:to_atom(Module), session=Sid, node=Node, params=Id },
+         io:format("Module: ~p~n",[Module]),
+         Ctx  = #cx { module=fix(Module), session=Sid, node=Node, params=Id },
          % NITRO, HEART, ROSTER, FTP protocol loop
          case n2o_proto:info(Bert,[],Ctx) of
               { reply, { binary, Response }, _ , _ }
