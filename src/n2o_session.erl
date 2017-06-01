@@ -94,6 +94,8 @@ positive_test() ->
   {'Token',B}=n2o_session:authenticate("",""),
   32=size(n2o_session:decode_token(B)),
   {'Token',C}=n2o_session:authenticate("",B),
+  %  need to delete all test data
+  delete_old_token({decode_token(C),<<"auth">>}),
   true=(C==B).
 
 negative_test1() ->
@@ -115,6 +117,7 @@ negative_test3() ->
     TokenWasChanged = TokenA/=TokenB,
     {'Token', TokenC} = n2o_session:authenticate("", TokenB),
     NewTokenIsValid = TokenB == TokenC,
+    delete_old_token({decode_token(TokenC),<<"auth">>}),
     TokenWasChanged == NewTokenIsValid.
 
 test_set_get_value() ->
@@ -123,6 +126,7 @@ test_set_get_value() ->
     Key = base64:encode(crypto:strong_rand_bytes(8)),
     set_value(SID, Key, InputValue),
     ResultValue = get_value(SID, Key, []),
+    delete_old_token({SID,Key}),
     InputValue == ResultValue.
 
 % TODO:
