@@ -31,7 +31,7 @@ authenticate(ClientSessionId, ClientSessionToken) ->
                                 UpdatedSID = generate_sid(),
                                 UpdatedClientToken = encode_token(UpdatedSID),
                                 Token = {{UpdatedSID,<<"auth">>},os:timestamp(),Expiration},
-                                delete_old_token(TokenValue),
+                                delete_old_token({TokenValue,<<"auth">>}),
                                 ets:insert(cookies,Token),
                                 io:format("Auth Token Expired: ~p~nGenerated new token ~p~n", [TokenValue, Token]),
                                 {'Token', UpdatedClientToken} end;
@@ -60,8 +60,9 @@ lookup_ets(Key) ->
          Values -> Values end.
 
 delete_old_token(Session) ->
-    [ ets:delete(cookies,X) || X <- ets:select(cookies,
-        ets:fun2ms(fun(A) when (element(1,element(1,A)) == Session) -> element(1,A) end)) ].
+    ets:delete_object(cookies, lookup_ets(Session)).
+%    [ ets:delete(cookies,X) || X <- ets:select(cookies,
+%        ets:fun2ms(fun(A) when (element(1,element(1,A)) == Session) -> element(1,A) end)) ].
 
 ttl() -> application:get_env(n2o,ttl,60*15).
 
