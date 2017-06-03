@@ -55,12 +55,15 @@ function arrayBufferToString(buffer){
             m.payloadBytes.byteOffset + m.payloadBytes.length);
         try {
             erlang = dec(BERT);
-            if (erlang.v && erlang.v[0].v == "io" && erlang.v[2].v.byteLength && erlang.v[2].v[0].v == "Token") {
-                binToken = erlang.v[2].v[1].v;
-
-                if (binToken.byteLength) {
-                    t = arrayBufferToString(erlang.v[2].v[1].v);
-                    set_token(t);
+            if (erlang.v && erlang.v[0].v == "io" &&
+                erlang.v.length == 3 && typeof(erlang.v[2].v) == "object" &&
+                erlang.v[2].v.length == 2 && erlang.v[2].v[0].v == "Token")
+                {
+                    binToken = erlang.v[2].v[1].v;
+                    if (binToken.byteLength) {
+                        t = arrayBufferToString(binToken);
+                        set_token(t);
+                        console.log("set token: " + t);
                 }
             }
 
