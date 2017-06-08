@@ -20,3 +20,19 @@ push(M,R,S,[H|T],Acc)     ->
          {unknown,_,_,_}  -> push(M,R,S,T,Acc);
          {reply,M1,R1,S1} -> reply(M1,R1,S1);
                         A -> push(M,R,S,T,[A|Acc]) end.
+
+terminate(_,#cx{module=Module}) -> catch Module:event(terminate).
+init(_Transport, Req, _Opts, _) ->
+    n2o:actions([]),
+    Ctx  = #cx { req=Req },
+    put(context,Ctx),
+    {Origin, _} = cowboy_req:header(<<"origin">>, Req, <<"*">>),
+    ConfigOrigin = nitro:to_binary(application:get_env(n2o,origin,Origin)),
+    Req1 = cowboy_req:set_resp_header(<<"Access-Control-Allow-Origin">>, ConfigOrigin, Ctx#cx.req),
+    {ok, Req1, Ctx}.
+
+upack(D)    -> binary_to_term(D,[safe]).
+stream({text,_}=M,R,S)    -> filter(M,R,S,protocols(),[]);
+stream({binary,<<>>},R,S) -> nop(R,S);
+stream({binary,D},R,S)    -> filter(upack(D),R,S,protocols(),[]);
+stream(_,R,S)             -> nop(R,S).

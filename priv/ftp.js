@@ -34,7 +34,7 @@ var ftp = {
         ftp.start();
     },
     send: function (item, data) {
-        ws.send(enc(tuple(atom('ftp'),
+        wsn.send(enc(tuple(atom('ftp'),
             bin(item.id),
             bin(item.sid),
             bin(item.name),
@@ -67,7 +67,6 @@ $file.do = function (rsp) {
         case 'init':
             console.log("init block="+block);
             if(block == 1) return;
-            
             var item = ftp.item(utf8_dec(rsp.v[1].v));
             item.offset = offset;
             item.block = block;

@@ -81,3 +81,4 @@ function arrayBufferToString(buffer){
     console.log(module);
 
   mqtt.connect(options);
+

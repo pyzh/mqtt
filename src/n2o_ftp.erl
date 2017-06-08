@@ -7,7 +7,7 @@
 -compile(export_all).
 
 -define(ROOT, application:get_env(n2o,upload,code:priv_dir(n2o))).
--define(NEXT, 60*1024). % 256K chunks for best 25MB/s speed
+-define(NEXT, 250*1024). % 256K chunks for best 25MB/s speed
 -define(STOP, 0).
 
 % Callbacks
