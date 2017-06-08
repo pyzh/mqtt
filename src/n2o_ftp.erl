@@ -60,21 +60,25 @@ info(Message,Req,State) -> {unknown,Message,Req,State}.
 
 % n2o Handlers
 
-proc(init,#handler{state=#ftp{sid=Sid}=FTP}=Async) ->
-    io:format("Proc Init: ~p",[FTP#ftp{data= <<>>}]),
-    n2o:send(Sid,FTP#ftp{data= <<>>,status={event,init}}),
+proc(init,#handler{state=#ftp{sid=Sid,meta=ClientId}=FTP}=Async) ->
+    io:format("Proc Init: ~p~n Sid: ~p ClientId: ~p~n",[FTP#ftp{data= <<>>},Sid,ClientId]),
+    FTP2 = FTP#ftp{data= <<>>,status={event,init}},
+    n2o_ring:send({publish,<<"events/1/index/anon/",ClientId/binary,"/",Sid/binary>>,
+                           term_to_binary(FTP2)}),
     {ok,Async};
 
-proc(#ftp{id=Link,sid=Sid,data=Data,status= <<"send">>,block=Block}=FTP,
+proc(#ftp{id=Link,sid=Sid,data=Data,status= <<"send">>,block=Block,meta=ClientId}=FTP,
      #handler{state=#ftp{size=TotalSize,offset=Offset,filename=RelPath}}=Async) when Offset+Block >= TotalSize ->
-        io:format("Proc Stop ~p, last piece size: ~p", [FTP#ftp{data= <<>>},byte_size(Data)]),
+        io:format("Proc Stop ~p, last piece size: ~p: ClientId: ~p~n", [FTP#ftp{data= <<>>},byte_size(Data),ClientId]),
         case file:write_file(filename:join(?ROOT,RelPath),<<Data/binary>>,[append,raw]) of
                 {error,Reason} -> {reply,{error,Reason},Async};
                 ok ->
             FTP2=FTP#ftp{data= <<>>,block=?STOP},
-            n2o:send(Sid,FTP2#ftp{status={event,stop},filename=RelPath}),
-                        spawn(fun() -> n2o_async:stop(file,Link) end),
-                        {stop,normal,FTP2,Async#handler{state=FTP2}} end;
+            FTP3=FTP2#ftp{status={event,stop},filename=RelPath},
+            n2o_ring:send({publish,<<"events/1/index/anon/",ClientId/binary,"/",Sid/binary>>,
+                           term_to_binary(FTP3)}),
+            spawn(fun() -> n2o_async:stop(file,Link) end),
+            {stop,normal,FTP2,Async#handler{state=FTP2}} end;
 
 proc(#ftp{data=Data,block=Block}=FTP,
      #handler{state=#ftp{offset=Offset,filename=RelPath}}=Async) ->
