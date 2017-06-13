@@ -89,7 +89,8 @@ on_session_subscribed(<<"emqttd",_/bytes>> = ClientId,
     {ring,VNode} = n2o_ring:lookup(ClientId),
     n2o_ring:send({publish,
       iolist_to_binary(["events/",integer_to_list(VNode, 10),"/",Username,"/anon/",ClientId,"/"]),
-        term_to_binary(<<>>)}),
+        term_to_binary({vnode_max, length(n2o:ring())})}),
+
     {ok, {Topic, Opts}};
 
 on_session_subscribed(_ClientId, _Username, {Topic, Opts}, _Env) ->
