@@ -39,6 +39,8 @@ start(_,_) -> catch load([]), X = supervisor:start_link({local,n2o},n2o, []),
               emqttd_access_control:register_mod(auth, n2o_auth, [[]], 9998),
                 X.
 ring()     -> n2o_ring:ring_list().
+ring_max() -> length(ring()).
+
 init([])   -> [ ets:new(T,opt()) || T <- tables() ],
               n2o_ring:init([{node(),1,4}]),
               { ok, { { one_for_one, 1000, 10 }, [] } }.
@@ -89,7 +91,7 @@ on_session_subscribed(<<"emqttd",_/bytes>> = ClientId,
     {ring,VNode} = n2o_ring:lookup(ClientId),
     n2o_ring:send({publish,
       iolist_to_binary(["events/",integer_to_list(VNode, 10),"/",Username,"/anon/",ClientId,"/"]),
-        term_to_binary({vnode_max, length(n2o:ring())})}),
+        term_to_binary({vnode_max, ring_max()})}),
 
     {ok, {Topic, Opts}};
 
