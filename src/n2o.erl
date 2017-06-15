@@ -40,6 +40,7 @@ start(_,_) -> catch load([]), X = supervisor:start_link({local,n2o},n2o, []),
                 X.
 ring()     -> n2o_ring:ring_list().
 ring_max() -> length(ring()).
+rand_vnode() -> rand:uniform(ring_max()).
 
 init([])   -> [ ets:new(T,opt()) || T <- tables() ],
               n2o_ring:init([{node(),1,4}]),
