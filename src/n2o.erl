@@ -273,3 +273,4 @@ session(Key, Value) -> #cx{session=SID}=get(context), ?SESSION:set_value(SID, Ke
 user()              -> case session(user) of undefined -> []; E -> nitro:to_list(E) end.
 user(User)          -> session(user,User).
 
+feed_topic(Topic, List) -> lists:foldl(fun({Var, Val}, T) -> emqttd_topic:feed_var(Var, Val, T) end, Topic, List).
