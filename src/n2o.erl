@@ -96,7 +96,8 @@ on_session_subscribed(<<"emqttd",_/bytes>> = ClientId,
 
     {ok, {Topic, Opts}};
 
-on_session_subscribed(_ClientId, _Username, {Topic, Opts}, _Env) ->
+on_session_subscribed(ClientId, _Username, {Topic, Opts}, _Env) ->
+    io:format("session ~p subscribed: ~p.\r~n", [ClientId, Topic]),
     {ok, {Topic, Opts}}.
 
 on_session_unsubscribed(ClientId, _Username, {Topic, Opts}, _Env) ->
@@ -282,3 +283,6 @@ feed_var(Var, Val, Topic) ->
     emqttd_topic:feed_var(Var, Val, Topic).
 
 feed_topic(Topic, List) -> lists:foldl(fun({Var, Val}, T) -> feed_var(Var, Val, T) end, Topic, List).
+
+subscribe_cli(ClientId, TopicTable) ->
+    emqttd_client:subscribe(emqttd_cm:lookup_proc(ClientId), TopicTable).

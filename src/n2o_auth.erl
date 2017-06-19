@@ -31,7 +31,7 @@ check(#mqtt_client{client_id = ClientId,
     Topics = [{<<"actions/%u/%c">>, 2}],
     TopicTable = [{Replace(Topic), Qos} || {Topic, Qos} <- Topics],
     io:format("CHECK ~p, ~p~n",[Username, TopicTable]),
-    ClientPid ! {subscribe, TopicTable},
+    emqttd_client:subscribe(ClientPid, TopicTable),
     ok;
 check(_Client, _Password, _Opts) ->
     ignore.
