@@ -286,3 +286,6 @@ feed_topic(Topic, List) -> lists:foldl(fun({Var, Val}, T) -> feed_var(Var, Val, 
 
 subscribe_cli(ClientId, TopicTable) ->
     emqttd_client:subscribe(emqttd_cm:lookup_proc(ClientId), TopicTable).
+unsubscribe_cli(ClientId, Topics) ->
+    emqttd_client:unsubscribe(emqttd_cm:lookup_proc(ClientId), Topics).
+
