@@ -7,7 +7,7 @@
 
 % Nitrogen pickle handler
 
-info({init, <<>>}, Req, State = #cx{session = Session}) ->
+info({init, <<"nynja">>}, Req, State = #cx{session = Session}) ->
     {'Token', Token} = n2o_session:authenticate(Session, []),
     info({init, Token}, Req, State);
 info({init, Token}, Req, State = #cx{module = Module, session = Session}) ->
