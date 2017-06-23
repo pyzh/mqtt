@@ -28,7 +28,7 @@ var options = {
     onFailure: function (m) { console.log("N2O Connection failed: " + m.errorMessage); },
     onSuccess: function ()  { console.log("N2O Connected");
                             } };
-function token() { return localStorage.getItem("token")||'nynja'; };
+function token() { return localStorage.getItem("token")||'krocks'; };
 function topic(prefix) { return prefix + "/" + rnd() + "/" + module + "/anon/" + clientId + "/" + token(); }
 function rnd() { return Math.floor((Math.random() * nodes)+1); }
 
