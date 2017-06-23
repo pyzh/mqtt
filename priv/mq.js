@@ -36,7 +36,7 @@ function rnd() { return Math.floor((Math.random() * nodes)+1); }
   mqtt.onConnectionLost = function (o) { console.log("connection lost: " + o.errorMessage); };
   mqtt.onMessageArrived = function (m) {
 
-  if (undefined == clientId && m.payloadBytes.length == 0)
+  if (undefined == clientId)
         {
             words = m.destinationName.split("/");
             clientId = words[2];
