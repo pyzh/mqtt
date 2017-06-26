@@ -35,6 +35,10 @@ proc(init,#handler{name=Name}=Async) ->
 
 % RPC over MQTT: All N2O messages go through this loop
 
+proc({redir_publish, To, Payload}, State  = #handler{state=C,seq=S}) ->
+    Return = send(C, To, Payload),
+    {reply, Return, State#handler{seq=S+1}};
+
 % > n2o_ring:send({publish,
 %             <<"events/4/index/anon/emqttd_198234215547984">>,
 %              term_to_binary({client,1,2,{user,message}})}).
