@@ -19,7 +19,8 @@ debug(Name,Topic,BERT,Address,Return) ->
                 ok;
            _ -> skip end.
 
-send(C,T,M) -> emqttc:publish(C, T, M, [{qos,2}]).
+send(C,T,M) -> send(C, T, M, [{qos,2}]).
+send(C,T,M,Opts) -> emqttc:publish(C, T, M, Opts).
 fix(<<"index">>) -> index;
 fix(Module) -> login.
 
@@ -35,8 +36,8 @@ proc(init,#handler{name=Name}=Async) ->
 
 % RPC over MQTT: All N2O messages go through this loop
 
-proc({redir_publish, To, Payload}, State  = #handler{state=C,seq=S}) ->
-    Return = send(C, To, Payload),
+proc({redir_publish, To, Payload, QosOpts}, State  = #handler{state=C,seq=S}) ->
+    Return = send(C, To, Payload, QosOpts),
     {reply, Return, State#handler{seq=S+1}};
 
 % > n2o_ring:send({publish,
