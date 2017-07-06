@@ -113,8 +113,14 @@ on_message_publish(Message = #mqtt_message{topic = <<"actions/",
                    from=From}, _Env) ->
     {ok, Message};
 
-on_message_publish(Message = #mqtt_message{topic = <<"events/",
+on_message_publish(#mqtt_message{topic = <<"events//",
                    RestTopic/binary>>,
+                   from={ClientId,_Undefined},
+                   payload = Payload}, _Env) ->
+    n2o_ring:send({publish, iolist_to_binary(["events/",get_vnode(ClientId),"/",RestTopic]),Payload}),
+    stop;
+on_message_publish(Message = #mqtt_message{topic = <<"events/",
+                   _RestTopic/binary>>,
                    from={ClientId,_Undefined},
                    payload = Payload}, _Env) ->
     {ok, Message};
@@ -289,3 +295,6 @@ subscribe_cli(ClientId, TopicTable) ->
 unsubscribe_cli(ClientId, Topics) ->
     emqttd_client:unsubscribe(emqttd_cm:lookup_proc(ClientId), Topics).
 
+get_vnode(ClientId) ->
+    [H|_] = binary_to_list(erlang:md5(ClientId)),
+    integer_to_binary(H rem ring_max() + 1).
