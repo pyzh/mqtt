@@ -115,9 +115,11 @@ on_message_publish(Message = #mqtt_message{topic = <<"actions/",
 
 on_message_publish(#mqtt_message{topic = <<"events//",
                    RestTopic/binary>>,
+                   qos = Qos,
                    from={ClientId,_Undefined},
                    payload = Payload}, _Env) ->
-    n2o_ring:send({publish, iolist_to_binary(["events/",get_vnode(ClientId),"/",RestTopic]),Payload}),
+    emqttd:publish(emqttd_message:make(ClientId, Qos,
+        iolist_to_binary(["events/",get_vnode(ClientId),"/",RestTopic]), Payload)),
     stop;
 on_message_publish(Message = #mqtt_message{topic = <<"events/",
                    _RestTopic/binary>>,
