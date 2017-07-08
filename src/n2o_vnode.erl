@@ -58,7 +58,7 @@ proc({publish, To, Request},
          [ Origin, Node, Module, Username, Id, Token | _ ] ->
          From = nitro:to_binary(["actions/",Module,"/",Id]),
          Sid  = nitro:to_binary(Token),
-         io:format("Module: ~p~n",[Module]),
+         % io:format("Module: ~p~n",[Module]),
          Ctx  = #cx { module=fix(Module), session=Sid, node=Node, params=Id, client_pid=C},
          % NITRO, HEART, ROSTER, FTP protocol loop
          case n2o_proto:info(Bert,[],Ctx) of
