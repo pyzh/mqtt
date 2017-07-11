@@ -18,7 +18,9 @@ filename(#ftp{sid=Sid,filename=FileName}) -> FileName. %filename:join(nitro:to_l
 
 info(#ftp{status={event,_}}=FTP, Req, State) ->
     io:format("Event Message: ~p",[FTP#ftp{data= <<>>}]),
-    Module=State#cx.module,
+    Module= case State#cx.module of
+                 [] -> index;
+                 M -> M end,
     Reply=try Module:event(FTP)
           catch E:R -> Error=n2o:stack(E,R),
                        io:format("Catch: ~p:~p~n~p",Error), Error end,
