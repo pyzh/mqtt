@@ -52,12 +52,12 @@ bench() -> [bench_mqtt(),bench_otp()].
 run()   -> 10000.
 
 bench_mqtt() -> N = run(), {T,_} = timer:tc(fun() -> [ begin Y = nitro:to_list(X rem 16), 
-    n2o:send_reply(<<>>,iolist_to_binary(["events/",Y]),term_to_binary([])) 
+    n2o:send_reply(<<>>,iolist_to_binary(["events/1/",Y]),term_to_binary([])) 
                                end || X <- lists:seq(1,N) ], ok end),
            {mqtt,trunc(N*1000000/T),"msgs/s"}.
 
 bench_otp() -> N = run(), {T,_} = timer:tc(fun() ->
-     [ n2o_ring:send({publish, nitro:to_binary("events/" ++ nitro:to_list((X rem length(n2o:ring())) + 1) ++
+     [ n2o_ring:send({publish, nitro:to_binary("events/1/" ++ nitro:to_list((X rem length(n2o:ring())) + 1) ++
                  "/index/anon/room/"), term_to_binary(X)}) 
                 || X <- lists:seq(1,N) ], ok end),
            {otp,trunc(N*1000000/T),"msgs/s"}.
@@ -91,7 +91,7 @@ on_session_subscribed(<<"emqttd",_/bytes>> = ClientId,
     io:format("session ~p subscribed: ~p.\r~n", [ClientId, Topic]),
     {ring,VNode} = n2o_ring:lookup(ClientId),
     n2o_ring:send({publish,
-      iolist_to_binary(["events/",integer_to_list(VNode, 10),"/",Username,"/anon/",ClientId,"/"]),
+      iolist_to_binary(["events/1/",integer_to_list(VNode, 10),"/",Username,"/anon/",ClientId,"/"]),
         term_to_binary({vnode_max, ring_max()})}),
 
     {ok, {Topic, Opts}};
@@ -113,13 +113,13 @@ on_message_publish(Message = #mqtt_message{topic = <<"actions/",
                    from=From}, _Env) ->
     {ok, Message};
 
-on_message_publish(#mqtt_message{topic = <<"events//",
+on_message_publish(#mqtt_message{topic = <<"events/1//",
                    RestTopic/binary>>,
                    qos = Qos,
                    from={ClientId,_Undefined},
                    payload = Payload}, _Env) ->
     emqttd:publish(emqttd_message:make(ClientId, Qos,
-        iolist_to_binary(["events/",get_vnode(ClientId),"/",RestTopic]), Payload)),
+        iolist_to_binary(["events/1/",get_vnode(ClientId),"/",RestTopic]), Payload)),
     stop;
 on_message_publish(Message = #mqtt_message{topic = <<"events/",
                    _RestTopic/binary>>,

@@ -55,7 +55,7 @@ proc({publish, To, Request},
     Addr   = emqttd_topic:words(To),
     Bert   = binary_to_term(Request,[safe]),
     Return = case Addr of
-         [ Origin, Node, Module, Username, Id, Token | _ ] ->
+         [ Origin, Vsn, Node, Module, Username, Id, Token | _ ] ->
          From = nitro:to_binary(["actions/1/",Module,"/",Id]),
          Sid  = nitro:to_binary(Token),
          % io:format("Module: ~p~n",[Module]),
@@ -73,7 +73,7 @@ proc({publish, To, Request},
 % On connection subscribe to Server Events: "events/:node/#"
 
 proc({mqttc, C, connected}, State=#handler{name=Name,state=C,seq=S}) ->
-    emqttc:subscribe(C, nitro:to_binary([<<"events/">>,
+    emqttc:subscribe(C, nitro:to_binary([<<"events/1/">>,
                         nitro:to_list(Name),"/#"]), 2),
     {ok, State#handler{seq = S+1}};
 
