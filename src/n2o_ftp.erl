@@ -77,7 +77,7 @@ proc(#ftp{id=Link,sid=Sid,data=Data,status= <<"send">>,block=Block,meta=ClientId
                 ok ->
             FTP2=FTP#ftp{data= <<>>,block=?STOP},
             FTP3=FTP2#ftp{status={event,stop},filename=RelPath},
-            n2o_ring:send({publish,<<"events/1/index/anon/",ClientId/binary,"/",Sid/binary>>,
+            n2o_ring:send({publish,<<"events/1//index/anon/",ClientId/binary,"/",Sid/binary>>,
                            term_to_binary(FTP3)}),
             spawn(fun() -> n2o_async:stop(file,Link) end),
             {stop,normal,FTP2,Async#handler{state=FTP2}} end;
