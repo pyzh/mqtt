@@ -29,7 +29,7 @@ var options = {
     onSuccess: function ()  { console.log("N2O Connected");
                             } };
 function token() { return localStorage.getItem("token")||'krocks'; };
-function topic(prefix) { return prefix + "/" + rnd() + "/" + module + "/anon/" + clientId + "/" + token(); }
+function topic(prefix) { return prefix + "/1/" + rnd() + "/" + module + "/anon/" + clientId + "/" + token(); }
 function rnd() { return Math.floor((Math.random() * nodes)+1); }
 
   mqtt = new Paho.MQTT.Client(host, 8083, '');
@@ -39,7 +39,7 @@ function rnd() { return Math.floor((Math.random() * nodes)+1); }
   if (undefined == clientId)
         {
             words = m.destinationName.split("/");
-            clientId = words[2];
+            clientId = words[3];
             console.log(clientId);
             ws.send(enc(tuple(atom('init'),bin(token()))));
         } else {

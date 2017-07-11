@@ -26,9 +26,9 @@ function N2O_start() {
 var $io = {}; $io.on = function onio(r, cb) {
     if (is(r, 3, 'io')) {
         if (r.v[2].v != undefined && r.v[2].v[1] != undefined &&
-            r.v[2].v.length == 2 && r.v[2].v[0].v == "Token"){
+            r.v[2].v.length == 2 && r.v[2].v[0].v == "Token") {
           tok = String.fromCharCode.apply(null, new Uint8Array(r.v[2].v[1].v));
-          console.log(tok);
+          console.log("Token+" + tok.substr(1,20));
           localStorage.setItem("token",tok);
         }
         try { eval(utf8_dec(r.v[1].v)); if (typeof cb == 'function') cb(r); return { status: "ok" }; }
@@ -49,7 +49,6 @@ var $bert = {}; $bert.protos = [$io, $file]; $bert.on = function onbert(evt, cb)
         var r = new FileReader();
         r.addEventListener("loadend", function () {
             try {
-//                if (debug) console.log(JSON.stringify(erlang));
                 erlang = dec(r.result);
                 if (typeof cb == 'function') cb(erlang);
                 for (var i = 0; i < $bert.protos.length; i++) {
