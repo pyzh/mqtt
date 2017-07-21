@@ -26,13 +26,16 @@ check(#mqtt_client{client_id = ClientId,
            <<>> -> get_client_id();
            _ ->  ClientId
         end,
-    Replace = fun(Topic) -> rep(<<"%u">>, Username,
-        rep(<<"%c">>, ClientId2, Topic)) end,
-    Topics = [{<<"actions/1/%u/%c">>, 2}],
-    TopicTable = [{Replace(Topic), Qos} || {Topic, Qos} <- Topics],
-    io:format("CHECK ~p, ~p~n",[Username, TopicTable]),
-    emqttd_client:subscribe(ClientPid, TopicTable),
-    ok;
+    case ClientId2 of
+        <<"emqttd_", _/binary>> ->
+            Replace = fun(Topic) -> rep(<<"%u">>, Username,
+                rep(<<"%c">>, ClientId2, Topic)) end,
+            Topics = [{<<"actions/1/%u/%c">>, 2}],
+            TopicTable = [{Replace(Topic), Qos} || {Topic, Qos} <- Topics],
+            io:format("CHECK ~p, ~p~n",[Username, TopicTable]),
+            emqttd_client:subscribe(ClientPid, TopicTable), ok;
+        _ -> ok
+    end;
 check(_Client, _Password, _Opts) ->
     ignore.
 
