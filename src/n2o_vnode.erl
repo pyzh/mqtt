@@ -22,7 +22,9 @@ debug(Name,Topic,BERT,Address,Return) ->
 send(C,T,M) -> send(C, T, M, [{qos,2}]).
 send(C,T,M,Opts) -> emqttc:publish(C, T, M, Opts).
 fix(<<"index">>) -> index;
-fix(Module) -> login.
+fix(Module) ->
+  %io:format("Module: ~p~n",[Module]),
+  list_to_atom(binary_to_list(Module)).
 
 % Performed on VNODE init
 gen_name(Pos) when is_integer(Pos)->
