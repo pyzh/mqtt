@@ -64,11 +64,9 @@ proc({publish, To, Request},
          Ctx  = #cx { module=fix(Module), session=Sid, node=Node, params=Id, client_pid=C, from = From},
          % NITRO, HEART, ROSTER, FTP protocol loop
          case n2o_proto:info(Bert,[],Ctx) of
-              { reply, { binary, Response }, _ , #cx{from = From2, post = Post}}
+              { reply, { binary, Response }, _ , #cx{from = From2}}
                     -> % io:format("Response: ~tp~n",[Response]),
-                      Res = send(C, From2, Response),
-                      [send(C, From2, BinResp) ||{binary, BinResp} <- Post], %% send post messages
-                      { ok,    Res};
+                      { ok,    send(C, From2, Response)};
               Reply -> { error, {"ERR: Invalid Return",Reply} } end;
                Addr -> { error, {"ERR: Unknown Address",Addr} } end,
     debug(Name,To,Bert,Addr,Return),
