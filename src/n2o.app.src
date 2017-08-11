@@ -2,7 +2,7 @@
              [{description,"N2O Server for MQTT"},
               {vsn,"4.6"},
               {license,"ISC"},
-              {applications,[kernel,stdlib]},
+              {applications,[kernel,stdlib,emqttd]},
               {modules,[]},
               {registered,[]},
               {mod,{n2o,[]}},
