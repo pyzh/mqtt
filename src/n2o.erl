@@ -36,7 +36,7 @@ start(_,_) -> catch load([]), X = supervisor:start_link({local,n2o},n2o, []),
               n2o_async:start(#handler{module=?MODULE,class=system,group=n2o,state=[],name="timer"}),
               [ n2o_async:start(#handler{module=n2o_vnode,class=ring,group=n2o,state=[],name=Pos})
                 || {{Name,Nodes},Pos} <- lists:zip(ring(),lists:seq(1,length(ring()))) ],
-              emqttd_access_control:register_mod(auth, n2o_auth, [[]], 9998),
+%              emqttd_access_control:register_mod(auth, n2o_auth, [[]], 9998),
                 X.
 ring()     -> n2o_ring:ring_list().
 ring_max() -> length(ring()).
