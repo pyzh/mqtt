@@ -58,7 +58,7 @@ proc({publish, To, Request},
     Bert   = binary_to_term(Request,[safe]),
     Return = case Addr of
          [ Origin, Vsn, Node, Module, Username, Id, Token | _ ] ->
-         From = nitro:to_binary(["actions/", Vsn, Module,"/",Id]),
+         From = nitro:to_binary(["actions/", Vsn, "/", Module,"/",Id]),
          Sid  = nitro:to_binary(Token),
          % io:format("Module: ~p~n",[Module]),
          Ctx  = #cx { module=fix(Module), session=Sid, node=Node, params=Id, client_pid=C, from = From, vsn = Vsn},
