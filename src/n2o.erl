@@ -113,13 +113,10 @@ on_message_publish(Message = #mqtt_message{topic = <<"actions/",
                    from=From}, _Env) ->
     {ok, Message};
 
-on_message_publish(#mqtt_message{topic = <<"events/1//",
-                   RestTopic/binary>>,
-                   qos = Qos,
-                   from={ClientId,_Undefined},
-                   payload = Payload}, _Env) ->
+on_message_publish(#mqtt_message{topic = <<"events/",Vsn,"//",RestTopic/binary>>, qos=Qos,
+                   from={ClientId,_},payload = Payload}, _Env) ->
     emqttd:publish(emqttd_message:make(ClientId, Qos,
-        iolist_to_binary(["events/1/",get_vnode(ClientId),"/",RestTopic]), Payload)),
+        iolist_to_binary(["events/",Vsn,"/",get_vnode(ClientId),"/",RestTopic]), Payload)),
     stop;
 on_message_publish(Message = #mqtt_message{topic = <<"events/",
                    _RestTopic/binary>>,
