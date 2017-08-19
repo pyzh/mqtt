@@ -86,15 +86,16 @@ on_session_created(ClientId, _Username, _Env) ->
     io:format("session ~p created.\r~n", [ClientId]),
     ok.
 
-on_session_subscribed(<<"emqttd",_/bytes>> = ClientId,
-          Username, {<<"actions",_/bytes>> = Topic, Opts}, _Env) ->
+
+on_session_subscribed(<<"emqttd",_/binary>> = ClientId,
+    Username, {<<"actions/",Vsn, "/",_/binary>> = Topic, Opts}, _Env) ->
     io:format("session ~p subscribed: ~p.\r~n", [ClientId, Topic]),
     {ring,VNode} = n2o_ring:lookup(ClientId),
     n2o_ring:send({publish,
-      iolist_to_binary(["events/1/",integer_to_list(VNode, 10),"/",Username,"/anon/",ClientId,"/"]),
+        iolist_to_binary(["events/",Vsn,"/",integer_to_list(VNode, 10),"/",Username,"/anon/",ClientId,"/"]),
         term_to_binary({vnode_max, ring_max()})}),
-
     {ok, {Topic, Opts}};
+
 
 on_session_subscribed(ClientId, _Username, {Topic, Opts}, _Env) ->
     io:format("session ~p subscribed: ~p.\r~n", [ClientId, Topic]),
@@ -113,13 +114,10 @@ on_message_publish(Message = #mqtt_message{topic = <<"actions/",
                    from=From}, _Env) ->
     {ok, Message};
 
-on_message_publish(#mqtt_message{topic = <<"events/1//",
-                   RestTopic/binary>>,
-                   qos = Qos,
-                   from={ClientId,_Undefined},
-                   payload = Payload}, _Env) ->
+on_message_publish(#mqtt_message{topic = <<"events/",Vsn,"//",RestTopic/binary>>, qos=Qos,
+                   from={ClientId,_},payload = Payload}, _Env) ->
     emqttd:publish(emqttd_message:make(ClientId, Qos,
-        iolist_to_binary(["events/1/",get_vnode(ClientId),"/",RestTopic]), Payload)),
+        iolist_to_binary(["events/",Vsn,"/",get_vnode(ClientId),"/",RestTopic]), Payload)),
     stop;
 on_message_publish(Message = #mqtt_message{topic = <<"events/",
                    _RestTopic/binary>>,
