@@ -44,17 +44,14 @@ proc(init,#handler{name=Name}=Async) ->
 
 % RPC over MQTT: All N2O messages go through this loop
 
-proc({redir_publish, To, Payload, QosOpts}, State  = #handler{state=C,seq=S}) ->
-    Return = send(C, To, Payload, QosOpts),
-    {reply, Return, State#handler{seq=S+1}};
-
 % > n2o_ring:send({publish,
 %             <<"events/4/index/anon/emqttd_198234215547984">>,
 %              term_to_binary({client,1,2,{user,message}})}).
 
 proc({publish, To, Request},
     State  = #handler{name=Name,state=C,seq=S}) ->
-    Addr   = emqttd_topic:words(To), % TODO fix bug in this function for some symbols, for example "+" -> '+'
+    Addr   = emqttd_topic:words(To),
+    % TODO fix bug in this function for some symbols, for example "+" -> '+'
     Bert   = binary_to_term(Request,[safe]),
     Return = case Addr of
          [ Origin, Vsn, Node, Module, Username, Id, Token | _ ] ->
