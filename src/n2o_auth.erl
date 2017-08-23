@@ -32,11 +32,11 @@ check(#mqtt_client{client_id = ClientId,
                 rep(<<"%c">>, ClientId2, Topic)) end,
             Topics = [{<<"actions/1/%u/%c">>, 2}],
             TopicTable = [{Replace(Topic), Qos} || {Topic, Qos} <- Topics],
-            io:format("CHECK ~p, ~p~n",[Username, TopicTable]),
+%            io:format("CHECK ~p, ~p~n",[Username, TopicTable]),
             emqttd_client:subscribe(ClientPid, TopicTable),
             Topics2 = [{<<"actions/2/%u/%c">>, 2}],
             TopicTable2 = [{Replace(Topic), Qos} || {Topic, Qos} <- Topics2],
-            io:format("CHECK ~p, ~p~n",[Username, TopicTable2]),
+%           io:format("CHECK ~p, ~p~n",[Username, TopicTable2]),
             emqttd_client:subscribe(ClientPid, TopicTable2),
             ok;
         _ -> ok
