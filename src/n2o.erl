@@ -71,25 +71,25 @@ on_client_connected(ConnAck, Client = #mqtt_client{client_id  = ClientId,
     {ok, Client}.
 
 on_client_disconnected(Reason, _Client = #mqtt_client{client_id = ClientId}, _Env) ->
-    io:format("client ~s disconnected, reason: ~w\r~n", [ClientId, Reason]),
+%    io:format("client ~s disconnected, reason: ~w\r~n", [ClientId, Reason]),
     ok.
 
 on_client_subscribe(ClientId, _Username, TopicTable, _Env) ->
-    io:format("client subscribed ~p.\r~n", [TopicTable]),
+%    io:format("client subscribed ~p.\r~n", [TopicTable]),
     {ok, TopicTable}.
 
 on_client_unsubscribe(ClientId, _Username, TopicTable, _Env) ->
-    io:format("client ~p unsubscribe ~p.\r~n", [ClientId, TopicTable]),
+%    io:format("client ~p unsubscribe ~p.\r~n", [ClientId, TopicTable]),
     {ok, TopicTable}.
 
 on_session_created(ClientId, _Username, _Env) ->
-    io:format("session ~p created.\r~n", [ClientId]),
+%    io:format("session ~p created.\r~n", [ClientId]),
     ok.
 
 
 on_session_subscribed(<<"emqttd",_/binary>> = ClientId,
     Username, {<<"actions/",Vsn, "/",_/binary>> = Topic, Opts}, _Env) ->
-    io:format("session ~p subscribed: ~p.\r~n", [ClientId, Topic]),
+%    io:format("session ~p subscribed: ~p.\r~n", [ClientId, Topic]),
     {ring,VNode} = n2o_ring:lookup(ClientId),
     n2o_ring:send({publish,
         iolist_to_binary(["events/",Vsn,"/",integer_to_list(VNode, 10),"/",Username,"/anon/",ClientId,"/"]),
@@ -98,7 +98,7 @@ on_session_subscribed(<<"emqttd",_/binary>> = ClientId,
 
 
 on_session_subscribed(ClientId, _Username, {Topic, Opts}, _Env) ->
-    io:format("session ~p subscribed: ~p.\r~n", [ClientId, Topic]),
+%    io:format("session ~p subscribed: ~p.\r~n", [ClientId, Topic]),
     {ok, {Topic, Opts}}.
 
 on_session_unsubscribed(ClientId, _Username, {Topic, Opts}, _Env) ->
@@ -106,7 +106,7 @@ on_session_unsubscribed(ClientId, _Username, {Topic, Opts}, _Env) ->
     ok.
 
 on_session_terminated(ClientId, _Username, _Reason, _Env) ->
-    io:format("session ~p terminated.\r~n", [{ClientId,_Reason}]),
+%    io:format("session ~p terminated.\r~n", [{ClientId,_Reason}]),
     ok.
 
 on_message_publish(Message = #mqtt_message{topic = <<"actions/",
@@ -132,7 +132,7 @@ on_message_delivered(ClientId, _Username, Message, _Env) ->
     {ok,Message}.
 
 on_message_acked(ClientId, _Username, Message, _Env) ->
-    io:format("client ~p acked.\r~n",[ClientId]),
+%    io:format("client ~p acked.\r~n",[ClientId]),
     {ok,Message}.
 
 unload() ->
@@ -179,7 +179,7 @@ depickle(SerializedData) -> ?PICKLER:depickle(SerializedData).
 -endif.
 
 stack(Error, Reason) -> ?ERRORING:stack_trace(Error, Reason).
-error(Class, Error) -> ?ERRORING:error_page(Class, Error).
+erroring(Class, Error) -> ?ERRORING:error_page(Class, Error).
 
 % Formatter
 
@@ -298,3 +298,40 @@ unsubscribe_cli(ClientId, Topics) ->
 get_vnode(ClientId) ->
     [H|_] = binary_to_list(erlang:md5(ClientId)),
     integer_to_binary(H rem ring_max() + 1).
+
+% Tiny Logging Framework
+
+-define(LOGGER, n2o_io).
+
+log_modules() -> [?MODULE].
+log_level() -> info.
+
+-define(LOG_MODULES, (application:get_env(n2o,log_modules,n2o))).
+-define(LOG_LEVEL,   (application:get_env(n2o,log_level,n2o))).
+
+log_level(none) -> 3;
+log_level(error) -> 2;
+log_level(warning) -> 1;
+log_level(_) -> 0.
+
+log(Module, String, Args, Fun) ->
+    case log_level(Fun) < log_level(?LOG_LEVEL:log_level()) of
+        true -> skip;
+        false -> case ?LOG_MODULES:log_modules() of
+            any -> ?LOGGER:Fun(Module, String, Args);
+            Allowed -> case lists:member(Module, Allowed) of
+                true -> ?LOGGER:Fun(Module, String, Args);
+                false -> skip end end end.
+
+info(Module, String, Args) -> log(Module,  String, Args, info).
+info(        String, Args) -> log(?MODULE, String, Args, info).
+info(        String      ) -> log(?MODULE, String, [],   info).
+
+warning(Module, String, Args) -> log(Module,  String, Args, warning).
+warning(        String, Args) -> log(?MODULE, String, Args, warning).
+warning(        String      ) -> log(?MODULE, String, [],   warning).
+
+error(Module, String, Args) -> log(Module,  String, Args, error).
+error(        String, Args) -> log(?MODULE, String, Args, error).
+error(        String)       -> log(?MODULE, String, [],   error).
+
