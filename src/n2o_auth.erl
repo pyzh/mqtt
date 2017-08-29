@@ -37,7 +37,7 @@ check(#mqtt_client{client_id = ClientId,
             {MS,_} = timer:tc(fun() ->
             emqttd_client:subscribe(ClientPid, TopicTable),
             emqttd_client:subscribe(ClientPid, TopicTable2) end),
-            io:format("Client pid ~p Topics: ~p Time: ~p~n",[ClientPid, [TopicTable,TopicTable2], MS]),
+%            io:format("Client pid ~p Topics: ~p Time: ~p~n",[ClientPid, [TopicTable,TopicTable2], MS]),
             ok;
         _ -> ok
     end;
