@@ -7,11 +7,11 @@
 
 % Nitrogen pickle handler
 
-info({init, <<"krocks">>}, Req, State = #cx{session = Session}) ->
-    {'Token', Token} = n2o_session:authenticate(Session, []),
+info({init, <<>>}, Req, State = #cx{session = Session}) ->
+    {'Token', Token} = n2o_auth:gen_token([], Session),
     info({init, Token}, Req, State);
+
 info({init, Token}, Req, State = #cx{module = Module, session = Session}) ->
-%    io:format("IToken: ~p~n",[Token]),
     case try Elements = Module:main(),
              n2o:render(Elements),
              {ok,[]}
@@ -23,7 +23,6 @@ info({init, Token}, Req, State = #cx{module = Module, session = Session}) ->
              catch C:E -> Error = n2o:stack(C,E),
                           io:format("Event Init: ~p:~p~n~p~n",Error),
                           {stack,Error} end,
-%             io:format("Token: ~p~n",[Token]),
              {reply,n2o:format({io,render_actions(n2o:actions()), {'Token', Token}}),
                     Req,State};
         {error,E} ->
@@ -83,8 +82,8 @@ html_events({pickle,Source,Pickled,Linked}=Pickle, State) ->
     {io,render_actions(n2o:actions()),<<>>}.
 
 render_ev(#ev{name=F,msg=P,trigger=T},_Source,Linked,State) ->
-    #cx{module=M} = get(context),
+    #cx{module=M} = erlang:get(context),
     case F of
          api_event -> M:F(P,Linked,State);
-         event -> lists:map(fun({K,V})-> put(K,nitro:to_binary(V)) end,Linked), M:F(P);
+         event -> lists:map(fun({K,V})-> erlang:put(K,nitro:to_binary(V)) end,Linked), M:F(P);
          _UserCustomEvent -> M:F(P,T,State) end.

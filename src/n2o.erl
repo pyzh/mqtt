@@ -90,10 +90,10 @@ on_session_created(ClientId, _Username, _Env) ->
 on_session_subscribed(<<"emqttd",_/binary>> = ClientId,
     Username, {<<"actions/",Vsn, "/",_/binary>> = Topic, Opts}, _Env) ->
 %    io:format("session ~p subscribed: ~p.\r~n", [ClientId, Topic]),
-    {ring,VNode} = n2o_ring:lookup(ClientId),
-    n2o_ring:send({publish,
-        iolist_to_binary(["events/",Vsn,"/",integer_to_list(VNode, 10),"/",Username,"/anon/",ClientId,"/"]),
-        term_to_binary({vnode_max, ring_max()})}),
+%    {ring,VNode} = n2o_ring:lookup(ClientId),
+%    n2o_ring:send({publish,
+%        iolist_to_binary(["events/",Vsn,"/",integer_to_list(VNode, 10),"/",Username,"/anon/",ClientId,"/"]),
+%        term_to_binary({vnode_max, ring_max()})}),
     {ok, {Topic, Opts}};
 
 
@@ -151,10 +151,6 @@ unload() ->
 send_reply(ClientId, Topic, Message) -> send_reply(ClientId, 0, Topic, Message).
 send_reply(ClientId, QoS, Topic, Message) ->
     emqttd:publish(emqttd_message:make(ClientId, QoS, Topic, Message)).
-
-rep(<<"%c">>, ClientId, Topic)  -> emqttd_topic:feed_var(<<"%c">>, ClientId,   Topic);
-rep(<<"%u">>, undefined, Topic) -> emqttd_topic:feed_var(<<"%u">>, <<"anon">>, Topic);
-rep(<<"%u">>, Username, Topic)  -> emqttd_topic:feed_var(<<"%u">>, Username,   Topic).
 
 send(X,Y) -> gproc:send({p,l,X},Y).
 reg(Pool) -> reg(Pool,undefined).
@@ -281,19 +277,8 @@ session(Key, Value) -> #cx{session=SID}=get(context), n2o:info(?MODULE, "session
 user()              -> case session(user) of undefined -> []; E -> nitro:to_list(E) end.
 user(User)          -> session(user,User).
 
-feed_var(Var, Val, Topic) when is_integer(Val)->
-    emqttd_topic:feed_var(Var, list_to_binary(integer_to_list(Val)), Topic);
-feed_var(Var, [], Topic) ->
-    emqttd_topic:feed_var(Var, <<>>, Topic);
-feed_var(Var, Val, Topic) ->
-    emqttd_topic:feed_var(Var, Val, Topic).
-
-feed_topic(Topic, List) -> lists:foldl(fun({Var, Val}, T) -> feed_var(Var, Val, T) end, Topic, List).
-
-subscribe_cli(ClientId, TopicTable) ->
-    emqttd_client:subscribe(emqttd_cm:lookup_proc(ClientId), TopicTable).
-unsubscribe_cli(ClientId, Topics) ->
-    emqttd_client:unsubscribe(emqttd_cm:lookup_proc(ClientId), Topics).
+subscribe_cli(ClientId, TopicTable) -> emqttd_client:subscribe(emqttd_cm:lookup_proc(ClientId), TopicTable).
+unsubscribe_cli(ClientId, Topics)   -> emqttd_client:unsubscribe(emqttd_cm:lookup_proc(ClientId), Topics).
 
 get_vnode(ClientId) ->
     [H|_] = binary_to_list(erlang:md5(ClientId)),

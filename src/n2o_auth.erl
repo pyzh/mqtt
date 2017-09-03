@@ -1,53 +1,49 @@
 -module(n2o_auth).
-
 -include("emqttd.hrl").
-
 -behaviour(emqttd_auth_mod).
 -compile(export_all).
 -export([init/1, check/3, description/0]).
 
-init([Listeners]) ->
-    {ok, Listeners}.
+init([Listeners]) -> {ok, Listeners}.
+get_client_id() -> {_, NPid, _} = emqttd_guid:new(), iolist_to_binary(["emqttd_", integer_to_list(NPid)]).
+description() -> "N2O Authentication Module".
 
-
-get_client_id() ->
-    {_, NPid, _} = emqttd_guid:new(),
-    iolist_to_binary(["emqttd_", integer_to_list(NPid)]).
-
-%%check(#mqtt_client{ws_initial_headers = undefined}, _Password, _) ->
-%%    ignore;
 check(#mqtt_client{client_id = ClientId,
-                    username  = Username,
+                    username  = PageModule,
                     client_pid = ClientPid,
                     ws_initial_headers = _Headers},
             _Password, _Listeners) ->
-    ClientId2 =
-        case ClientId of
-           <<>> -> get_client_id();
-           _ ->  ClientId
-        end,
+  
+    ClientId2 = case ClientId of <<>> -> get_client_id(); _ ->  ClientId end,
     case ClientId2 of
         <<"emqttd_", _/binary>> ->
-            Replace = fun(Topic) -> rep(<<"%u">>, Username,
-                rep(<<"%c">>, ClientId2, Topic)) end,
-            Topics = [{<<"actions/1/%u/%c">>, 2}],
-            TopicTable = [{Replace(Topic), Qos} || {Topic, Qos} <- Topics],
-            Topics2 = [{<<"actions/2/%u/%c">>, 2}],
-            TopicTable2 = [{Replace(Topic), Qos} || {Topic, Qos} <- Topics2],
-            {MS,_} = timer:tc(fun() ->
-            emqttd_client:subscribe(ClientPid, TopicTable)
-%            emqttd_client:subscribe(ClientPid, TopicTable2)
-            end),
-%            io:format("Client pid ~p Topics: ~p Time: ~p~n",[ClientPid, [TopicTable,TopicTable2], MS]),
+            emqttd_client:subscribe(ClientPid,
+                [{iolist_to_binary(["actions/1/",PageModule,"/",ClientId2]), 2}]),
             ok;
         _ -> ok
     end;
-check(_Client, _Password, _Opts) ->
-    ignore.
+check(_Client, _Password, _Opts) -> ignore.
 
-rep(<<"%c">>, ClientId, Topic)  -> emqttd_topic:feed_var(<<"%c">>, ClientId,   Topic);
-rep(<<"%u">>, undefined, Topic) -> emqttd_topic:feed_var(<<"%u">>, <<"anon">>, Topic);
-rep(<<"%u">>, Username, Topic)  -> emqttd_topic:feed_var(<<"%u">>, Username,   Topic).
+gen_token([], Data) ->
+    Now = now_msec(),
+    Expiration = Now+application:get_env(n2o,ttl,60*15)*1000,
+    {'Token', n2o_secret:pickle(term_to_binary(Expiration))};
+gen_token(ClientSessionToken, Data) ->
+    Now = now_msec(),
+    case bin_to_term(n2o_secret:depickle(ClientSessionToken)) of
+        <<>> -> {error, invalid_token};
+        Expiration when Expiration > Now -> {'Token', ClientSessionToken};
+        Expiration -> gen_token([], Data)
+    end.
 
-description() ->
-    "N2O Authentication Module".
+bin_to_term(<<>>) -> <<>>;
+bin_to_term(Bin) -> binary_to_term(Bin).
+
+gen_sid(Time) ->
+    nitro_conv:hex(binary:part(crypto:hmac(application:get_env(n2o,hmac,sha256),
+        n2o_secret:secret(),term_to_binary(Time)),0,16)).
+
+now_msec() -> now_msec(erlang:timestamp()).
+now_msec({Mega,Sec,Micro}) -> (Mega*1000000 + Sec)*1000 + round(Micro/1000).
+msec_now(A) -> A0 = A/1000, S = trunc(A0), Mega = S div 1000000,
+                Sec = S - Mega*1000000, Micro = round((A0 - S)*1000000), {Mega,Sec,Micro}.
