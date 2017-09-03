@@ -35,8 +35,9 @@ check(#mqtt_client{client_id = ClientId,
             Topics2 = [{<<"actions/2/%u/%c">>, 2}],
             TopicTable2 = [{Replace(Topic), Qos} || {Topic, Qos} <- Topics2],
             {MS,_} = timer:tc(fun() ->
-            emqttd_client:subscribe(ClientPid, TopicTable),
-            emqttd_client:subscribe(ClientPid, TopicTable2) end),
+            emqttd_client:subscribe(ClientPid, TopicTable)
+%            emqttd_client:subscribe(ClientPid, TopicTable2)
+            end),
 %            io:format("Client pid ~p Topics: ~p Time: ~p~n",[ClientPid, [TopicTable,TopicTable2], MS]),
             ok;
         _ -> ok

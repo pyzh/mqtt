@@ -11,7 +11,7 @@ info({init, <<"krocks">>}, Req, State = #cx{session = Session}) ->
     {'Token', Token} = n2o_session:authenticate(Session, []),
     info({init, Token}, Req, State);
 info({init, Token}, Req, State = #cx{module = Module, session = Session}) ->
-    io:format("IToken: ~p~n",[Token]),
+%    io:format("IToken: ~p~n",[Token]),
     case try Elements = Module:main(),
              n2o:render(Elements),
              {ok,[]}
@@ -23,7 +23,7 @@ info({init, Token}, Req, State = #cx{module = Module, session = Session}) ->
              catch C:E -> Error = n2o:stack(C,E),
                           io:format("Event Init: ~p:~p~n~p~n",Error),
                           {stack,Error} end,
-             io:format("Token: ~p~n",[Token]),
+%             io:format("Token: ~p~n",[Token]),
              {reply,n2o:format({io,render_actions(n2o:actions()), {'Token', Token}}),
                     Req,State};
         {error,E} ->

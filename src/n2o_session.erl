@@ -3,7 +3,7 @@
 -compile(export_all).
 
 authenticate(ClientSessionId, ClientSessionToken) ->
-    io:format("Session Init ~nClientId ~p: Token ~p~n~n", [ClientSessionId, ClientSessionToken]),
+    n2o:info(?MODULE, "Session Init ~nClientId ~p: Token ~p~n~n", [ClientSessionId, ClientSessionToken]),
     Expiration = till(calendar:local_time(), ttl()),
     Response = case ClientSessionToken of
         [] ->
@@ -11,7 +11,7 @@ authenticate(ClientSessionId, ClientSessionToken) ->
             ClientToken = encode_token(NewSID),
             Token = {{NewSID,<<"auth">>},os:timestamp(),Expiration},
             ets:insert(cookies,Token),
-            io:format("Auth Token New: ~p~n~p~n~n", [Token, ClientToken]),
+            n2o:info(?MODULE, "Auth Token New: ~p~n~p~n~n", [Token, ClientToken]),
             {'Token', ClientToken};
         ExistingToken ->
             SessionId = decode_token(ClientSessionToken),
@@ -33,9 +33,9 @@ authenticate(ClientSessionId, ClientSessionToken) ->
                                 Token = {{UpdatedSID,<<"auth">>},os:timestamp(),Expiration},
                                 delete_old_token({TokenValue,<<"auth">>}),
                                 ets:insert(cookies,Token),
-                                io:format("Auth Token Expired: ~p~nGenerated new token ~p~n", [TokenValue, Token]),
+                                n2o:info(?MODULE, "Auth Token Expired: ~p~nGenerated new token ~p~n", [TokenValue, Token]),
                                 {'Token', UpdatedClientToken} end;
-                    What -> io:format("Auth Cookie Error: ~p~n",[What]), {fail, What} end,
+                    What -> n2o:info(?MODULE, "Auth Cookie Error: ~p~n",[What]), {fail, What} end,
                  InnerResponse end
         end,
     Response.
