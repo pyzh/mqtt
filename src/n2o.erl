@@ -277,8 +277,14 @@ session(Key, Value) -> #cx{session=SID}=get(context), n2o:info(?MODULE, "session
 user()              -> case session(user) of undefined -> []; E -> nitro:to_list(E) end.
 user(User)          -> session(user,User).
 
-subscribe_cli(ClientId, TopicTable) -> emqttd_client:subscribe(emqttd_cm:lookup_proc(ClientId), TopicTable).
-unsubscribe_cli(ClientId, Topics)   -> emqttd_client:unsubscribe(emqttd_cm:lookup_proc(ClientId), Topics).
+subscribe_cli(ClientId, TopicTable) ->
+    [ emqttd_pubsub:add_subscriber(Topic,ClientId,[{qos,Qos}]) || {Topic,Qos} <- TopicTable ].
+
+unsubscribe_cli(ClientId, TopicTable) ->
+    [ emqttd_pubsub:del_subscriber(Topic,ClientId,[{qos,Qos}]) || {Topic,Qos} <- TopicTable ].
+
+%subscribe_cli(ClientId, TopicTable) -> emqttd_client:subscribe(emqttd_cm:lookup_proc(ClientId), TopicTable).
+%unsubscribe_cli(ClientId, Topics)   -> emqttd_client:unsubscribe(emqttd_cm:lookup_proc(ClientId), Topics).
 
 get_vnode(ClientId) ->
     [H|_] = binary_to_list(erlang:md5(ClientId)),
