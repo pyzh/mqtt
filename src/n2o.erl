@@ -281,7 +281,7 @@ subscribe_cli(ClientId, TopicTable) ->
     [ begin
         kvs:put({mqtt_subscription, ClientId, Topic}),
         kvs:put({mqtt_subproperty, {Topic, ClientId}, [{qos,Qos}]}),
-        kvs:put({mqtt_subscriber, Topic, ClientId})
+        emqttd_pubsub:add_subscriber(Topic,ClientId,[{qos,Qos}])
       end || {Topic,Qos} <- TopicTable ].
 
 unsubscribe_cli(ClientId, TopicTable) ->
