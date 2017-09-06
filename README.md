@@ -53,8 +53,9 @@ Credits
 History
 -------
 
-4.5 — Basic Messaging with single topic and Echo
-4.6 — Echo eliminated Basic Filter with req/rep topics
-4.7 — DHT supervised node for server MQTT connections
+* 4.5 — Basic Messaging with single topic and Echo
+* 4.6 — Echo eliminated Basic Filter with req/rep topics
+* 4.7 — DHT supervised node for server MQTT connections
+* 4.9 — Subscribe offline clients
 
 OM A HUM
