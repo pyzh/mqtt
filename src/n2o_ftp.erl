@@ -48,7 +48,7 @@ info(#ftp{id=Link,status= <<"init">>,block=Block,offset=Offset}=FTP,Req,State) -
 
 info(#ftp{id=Link,status= <<"send">>}=FTP,Req,State) ->
 %    io:format("Info Send: ~p",[FTP#ftp{data= <<>>}]),
-    Reply=try gen_server:call(n2o_async:pid({file,Link}),FTP)
+    Reply=try gen_server:call(n2o_async:pid(file,Link),FTP)
         catch E:R -> skip, %io:format("Info Error call the sync: ~p~n",[{E,R}]),
             FTP#ftp{data= <<>>,block=?STOP} end,
 %    io:format("Send reply ~p",[Reply#ftp{data= <<>>}]),

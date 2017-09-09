@@ -1,5 +1,5 @@
-N2O: Protocol Server 4.6 for MQTT
-=================================
+N2O: Protocol Server 4.9.3 for MQTT
+===================================
 
 Features
 --------
@@ -56,5 +56,6 @@ History
 4.5 — Basic Messaging with single topic and Echo
 4.6 — Echo eliminated Basic Filter with req/rep topics
 4.7 — DHT supervised node for server MQTT connections
+4.9 — Cleaned n2o_async, written manpage
 
 OM A HUM

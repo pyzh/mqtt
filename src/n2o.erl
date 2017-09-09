@@ -9,12 +9,10 @@
 -compile(export_all).
 -export([start/2, stop/1, init/1, proc/2]).
 
-%%                                               N2O Topic Format
+%% N2O-MQTT Topic Format
 %%
-%% Client: 1. actions/index/emqttd_198234215548221
-%% Server: 2. events/3/index/maxim@synrc.com/emqttd_198234215548221
-%%         3. events/2/login/anon/emqttd_198234215548221
-%% Review: 4. room/n2o
+%% Client: 1. actions/:vsn/:module/:client
+%% Server: 2. events/:vsn/:node/:module/:user/:client/:token
 
 load(Env) ->
     emqttd:hook('client.connected',    fun ?MODULE:on_client_connected/3,     [Env]),
@@ -29,20 +27,17 @@ load(Env) ->
     emqttd:hook('message.delivered',   fun ?MODULE:on_message_delivered/4,    [Env]),
     emqttd:hook('message.acked',       fun ?MODULE:on_message_acked/4,        [Env]).
 
-tables()   -> [ cookies, caching ].
-opt()      -> [ set, named_table, { keypos, 1 }, public ].
 stop(_)    -> unload(), ok.
 start(_,_) -> catch load([]), X = supervisor:start_link({local,n2o},n2o, []),
-              n2o_async:start(#handler{module=?MODULE,class=system,group=n2o,state=[],name="timer"}),
+              n2o_async:start(#handler{module=?MODULE,class=caching,group=n2o,state=[],name="timer"}),
               [ n2o_async:start(#handler{module=n2o_vnode,class=ring,group=n2o,state=[],name=Pos})
                 || {{Name,Nodes},Pos} <- lists:zip(ring(),lists:seq(1,length(ring()))) ],
-%              emqttd_access_control:register_mod(auth, n2o_auth, [[]], 9998),
                 X.
 ring()     -> n2o_ring:ring_list().
 ring_max() -> length(ring()).
 rand_vnode() -> rand:uniform(ring_max()).
 
-init([])   -> [ ets:new(T,opt()) || T <- tables() ],
+init([])   -> storage_init(),
               n2o_ring:init([{node(),1,4}]),
               { ok, { { one_for_one, 1000, 10 }, [] } }.
 
@@ -119,6 +114,7 @@ on_message_publish(#mqtt_message{topic = <<"events/",Vsn,"//",RestTopic/binary>>
     emqttd:publish(emqttd_message:make(ClientId, Qos,
         iolist_to_binary(["events/",Vsn,"/",get_vnode(ClientId),"/",RestTopic]), Payload)),
     stop;
+
 on_message_publish(Message = #mqtt_message{topic = <<"events/",
                    _RestTopic/binary>>,
                    from={ClientId,_Undefined},
@@ -146,8 +142,6 @@ unload() ->
     emqttd:unhook('message.delivered',    fun ?MODULE:on_message_delivered/4),
     emqttd:unhook('message.acked',        fun ?MODULE:on_message_acked/4).
 
-% TODO: Eliminate qos=0 limitation
-
 send_reply(ClientId, Topic, Message) -> send_reply(ClientId, 0, Topic, Message).
 send_reply(ClientId, QoS, Topic, Message) ->
     emqttd:publish(emqttd_message:make(ClientId, QoS, Topic, Message)).
@@ -155,8 +149,8 @@ send_reply(ClientId, QoS, Topic, Message) ->
 send(X,Y) -> gproc:send({p,l,X},Y).
 reg(Pool) -> reg(Pool,undefined).
 reg(X,Y) ->
-    case cache({pool,X}) of
-         undefined -> gproc:reg({p,l,X},Y), cache({pool,X},X);
+    case cache(caching,{pool,X}) of
+         undefined -> gproc:reg({p,l,X},Y), cache(caching,{pool,X},X);
                  _ -> skip end.
 
 % Pickling n2o:pickle/1
@@ -190,31 +184,38 @@ proc(init,#handler{}=Async) ->
     {ok,Async#handler{state=Timer}};
 
 proc({timer,ping},#handler{state=Timer}=Async) ->
-    case Timer of undefined -> skip; _ -> erlang:cancel_timer(Timer) end,
+    erlang:cancel_timer(Timer),
     io:format("n2o Timer: ~p\r~n",[ping]),
-    n2o:invalidate_cache(),
+    n2o:invalidate_cache(caching),
     {reply,ok,Async#handler{state=timer_restart(ping())}}.
 
 timer_restart(Diff) -> {X,Y,Z} = Diff, erlang:send_after(1000*(Z+60*Y+60*60*X),self(),{timer,ping}).
-ping() -> application:get_env(n2o,timer,{0,10,0}).
+ping() -> application:get_env(n2o,timer,{0,1,0}).
 
-invalidate_cache() -> ets:foldl(fun(X,_) -> n2o:cache(element(1,X)) end, 0, caching).
+invalidate_cache(Table) -> ets:foldl(fun(X,_) -> n2o:cache(Table,element(1,X)) end, 0, caching).
 
 ttl() -> application:get_env(n2o,ttl,60*1).
 till(Now,TTL) ->
     calendar:gregorian_seconds_to_datetime(
         calendar:datetime_to_gregorian_seconds(Now) + TTL), infinity.
 
-cache(Key, undefined) -> ets:delete(caching,Key);
-cache(Key, Value) -> ets:insert(caching,{Key,till(calendar:local_time(), ttl()),Value}), Value.
-cache(Key, Value, Till) -> ets:insert(caching,{Key,Till,Value}), Value.
-cache(Key) ->
-    Res = ets:lookup(caching,Key),
+-ifndef(CACHING).
+-define(CACHING, (application:get_env(n2o,caching,n2o))).
+-endif.
+
+opt()      -> [ set, named_table, { keypos, 1 }, public ].
+tables()   -> [ cookies, file, caching, ring, async ].
+storage_init()   -> [ ets:new(X,opt()) || X <- tables() ].
+cache(Tab, Key, undefined)   -> ets:delete(Tab,Key);
+cache(Tab, Key, Value)       -> ets:insert(Tab,{Key,till(calendar:local_time(), ttl()),Value}), Value.
+cache(Tab, Key, Value, Till) -> ets:insert(Tab,{Key,Till,Value}), Value.
+cache(Tab, Key) ->
+    Res = ets:lookup(Tab,Key),
     Val = case Res of [] -> []; [Value] -> Value; Values -> Values end,
     case Val of [] -> [];
                 {_,infinity,X} -> X;
                 {_,Expire,X} -> case Expire < calendar:local_time() of
-                                  true ->  ets:delete(caching,Key), [];
+                                  true ->  ets:delete(Tab,Key), [];
                                   false -> X end end.
 
 % Context Variables and URL Query Strings from ?REQ and ?CTX n2o:q/1 n2o:qc/[1,2]
