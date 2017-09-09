@@ -135,9 +135,7 @@ or its response to <b>gen_server:call/2</b> with new state included in #reply.</
 
 <h4>restart(Class,Name) -> {pid(),term()} | #error{} | #handler{}.</h4>
 
-<p>Send FLUSH message with current actions in process dictionary,
-then cleanup all actions.
-</p>
+<p>Tries to stop the process. On success start new one, else fails.</p>
 
 <h4> send(Class,Name,Message) -> term(). </h4>
 
