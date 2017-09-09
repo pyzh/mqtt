@@ -25,12 +25,19 @@
 
 
 <p>The <b>n2o_async</b> module is a simplified gen_server replacement, which remains compatible with Erlang/OTP.
-</p>
+N2O provide its own style of concurrent process programming that is reduced to a single <b>proc/2</b> callback
+function which can be implemented in any module, and can be supervised by any application supervisor in runtime.
+Supervised processes (their pids) are indexed by ETS tables. There tables could be created by any application.
+No owning restrictions. In this way you can spawn supervised processes under any application using any ETS
+table across all your project without any efforts in a uniform and simplest way possible.</p>
+
+<p> The overall size of <b>n2o_async</b> is 59 lines of code. This very thin wrapper around gen_server.
+The usage of pure gen_server leads to code duplication and readability issues in team works.</p>
 
 <h3>EXAMPLE</h3>
 
 <p>Here is literal implementation of N2O Timer which invalidates
-   the caching table used for session variables.</p>
+   the <b>caching</b> table used for session variables.</p>
 
 <figure><figcaption>Listing 1. Invalidate Cache by Timer</figcaption><code>
  proc(init,#handler{}=Async) ->
@@ -92,6 +99,10 @@ process #handler{} initialization.</p>
 
 <h3>RECORDS</h3>
 
+<p>Each process is driven by its protocol which in fact a sum of protocol messages.
+Though n2o_async as being generic don't limit the protocol messages,
+however it defines the type of process state, the #handler{} record.</p>
+
 <figure><figcaption>Listing 3. Erlang/OTP Records</figcaption><code>
       #ok { code = [] :: [] | #handler{} }.
 
@@ -113,6 +124,16 @@ process #handler{} initialization.</p>
 
 </code></figure>
 
+<ul>
+<li>Name &mdash; process name, key in supervised chain.</li>
+<li>Module &mdash; the module name where <b>proc/2</b> is placed.</li>
+<li>Class &mdash; ETS table name where cached pids are stored.</li>
+<li>Group &mdash; the application, where supervised processes will be created.</li>
+<li>Config &mdash; any term used to start the supervised procedd.</li>
+<li>State &mdash; the state of the running supervised process.</li>
+<li>Seq &mdash; custom integer counter you can use during processing.</li>
+</ul>
+
 <h3>CALLBACK</h3>
 
 <h4>proc(term(),#handler{}) -> #ok{} | #reply{}.</h4>
@@ -129,23 +150,23 @@ or its response to <b>gen_server:call/2</b> with new state included in #reply.</
 
 <p>Spawns <b>proc/2</b> function inside a process under supervision.</p>
 
-<h4>stop(Pid,Class,Name) -> #handler{} | #error{}.</h4>
+<h4>stop(pid(),Class,Name) -> #handler{} | #error{}.</h4>
 
 <p>Kills the process and remove from supervision.</p>
 
 <h4>restart(Class,Name) -> {pid(),term()} | #error{} | #handler{}.</h4>
 
-<p>Tries to stop the process. On success starts the new one, else fails.</p>
+<p>Tries to stop the process. On success it starts the new one, else return error.</p>
 
-<h4> send(Class,Name,Message) -> term(). </h4>
+<h4>send(Class,Name,Message::term()) -> term(). </h4>
 
 <p>Sends <b>gen_call</b> message to process, taken from Class table with Name key.
 Returns the response from <b>gen_server:call</b>.</p>
 </p>
 
-<h4> pid(Class,Name) -> pid(). </h4>
+<h4>pid(Class,Name) -> pid(). </h4>
 
-<p>Returns pid that was stored during process initialization in Class table.</p>
+<p>Returns pid that was stored during process initialization in Class table with Name key.</p>
 
 <figure><figcaption>Listing 5. gen_server compatibility.</figcaption><code>
  1> n2o_async:pid(caching,"timer") ! {timer,ping}.
