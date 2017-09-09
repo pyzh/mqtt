@@ -60,7 +60,7 @@ For bulding web based NITRO applications you need to include
 <h3>CACHE</h3>
 
 <p>Cache turns each ETS store into expirable. Just put values onto keys using these
-functions and system timer will clear expired entries eventually. CACHE is like a memcache or redis,
+functions and system timer will clear expired entries eventually. Cache is like a memcache or redis,
 but you don't need a memcache or redis if you write in Erlang.</p>
 
 <h4>cache(Tab, Key, Value, Till) -> term().</h4>
@@ -75,7 +75,7 @@ but you don't need a memcache or redis if you write in Erlang.</p>
 
 <p>Sessions are stored in <b>cookies</b> table and indexed by security token which
 is usually a password based token. All session variables from all users are stored in this table.
-each users see only its variables indexed by his token. Sessions like a Cache are expirable.
+each users see only its variables indexed by his token. Sessions like a cache are expirable.
 Technically, N2O sessions are the server controlling mechanism of JavaScript cookies.</p>
 
 <h4>session(Key, Value) -> term().</h4>
