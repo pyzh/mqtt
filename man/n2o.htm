@@ -75,7 +75,7 @@ but you don't need a memcache or redis if you write in Erlang.</p>
 
 <p>Sessions are stored in <b>cookies</b> table and indexed by security token which
 is usually a password based token. All session variables from all users are stored in this table.
-each users see only its variables indexed by his token. Sessions like a cache are expirable.
+each user see only its variables indexed by his token. Sessions like a cache are expirable.
 Technically, N2O sessions are the server controlling mechanism of JavaScript cookies.</p>
 
 <h4>session(Key, Value) -> term().</h4>
@@ -113,9 +113,9 @@ where functions <b>log_level</b> and <b>log_modules</b> are placed.</p>
 
 <figure><figcaption>Listing 2. Project Settings.</figcaption>
 <code>
- -define(LOGGER, (application:get_env(n2o,logging,n2o_io))).
- -define(LOG_MODULES, (application:get_env(n2o,log_modules,n2o))).
- -define(LOG_LEVEL,   (application:get_env(n2o,log_level,n2o))).
+ -define(LOGGER,      (application:get_env(n2o,logging,     n2o_io))).
+ -define(LOG_MODULES, (application:get_env(n2o,log_modules, n2o))).
+ -define(LOG_LEVEL,   (application:get_env(n2o,log_level,   n2o))).
 
 </code></figure>
 
@@ -129,7 +129,9 @@ modules you want to trace, and global log level for them.</p>
 
 </code></figure>
 
-<p>In your code you should use following trace functions:</p>
+<p>In your code you should use following trace functions
+   which are the same as callback API for n2o logging
+   environment variable.</p>
 
 <h4>error(Module, Format, Args) -> ok | skip.</h4>
 
