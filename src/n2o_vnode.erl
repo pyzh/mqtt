@@ -47,7 +47,8 @@ proc({publish, To, Request},
          [ Origin, Vsn, Node, Module, Username, Id, Token | _ ] ->
          From = nitro:to_binary(["actions/", Vsn, "/", Module, "/", Id]),
          Sid  = nitro:to_binary(Token),
-         Ctx  = #cx { module=fix(Module), session=Sid, node=Node, params=Id, client_pid=C, from = From, vsn = Vsn},
+         Ctx  = #cx { module=fix(Module), session=Sid, node=Node,
+                      params=Id, client_pid=C, from = From, vsn = Vsn},
          put(context, Ctx),
          case n2o_proto:info(Bert,[],Ctx) of
               { reply, { binary, Response }, _ , #cx{from = From2}}
