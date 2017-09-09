@@ -45,15 +45,17 @@ For bulding web based NITRO applications you need to include
 
 <h3>CONFIG</h3>
 
-<figure><pre>[{n2o,[{formatter,bert},
-       {json,jsone},
-       {pickler,n2o_secret},
-       {erroring,n2o},
-       {protocols,[n2o_ftp,n2o_nitro]},
-       {filter,{n2o_proto,push}},
-       {timer,{0,10,0}}]}].
-</pre></figure>
+<figure><code>
+  [{n2o,[{formatter,bert},
+         {json,jsone},
+         {logging,n2o_io},
+         {pickler,n2o_secret},
+         {erroring,n2o},
+         {protocols,[n2o_ftp,n2o_nitro]},
+         {filter,{n2o_proto,push}},
+         {timer,{0,10,0}}]}].
 
+</code></figure>
 
 <h3>CACHE</h3>
 
@@ -111,6 +113,7 @@ where functions <b>log_level</b> and <b>log_modules</b> are placed.</p>
 
 <figure><figcaption>Listing 2. Project Settings.</figcaption>
 <code>
+ -define(LOGGER, (application:get_env(n2o,logging,n2o_io))).
  -define(LOG_MODULES, (application:get_env(n2o,log_modules,n2o))).
  -define(LOG_LEVEL,   (application:get_env(n2o,log_level,n2o))).
 
@@ -136,7 +139,11 @@ modules you want to trace, and global log level for them.</p>
 
 
 
-<p>Also you may refer to: <a href="n2o_format.htm">n2o_format</a></b>,
+<p>Also you may refer to:
+<a href="http://erlang.org/doc/man/io.html">io</a></b>,
+<a href="http://erlang.org/doc/man/ets.html">ets</a></b>,
+<a href="n2o.htm">n2o</a></b>,
+<a href="n2o_format.htm">n2o_format</a></b>,
 <a href="n2o_proto.htm"><b>n2o_proto</b></a>,
 <a href="n2o_async.htm"><b>n2o_async</b></a>,
 <a href="n2o_ftp.htm"><b>n2o_ftp</b></a>,
