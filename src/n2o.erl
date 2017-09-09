@@ -273,8 +273,8 @@ error_page(Class,Error) ->
 -define(SESSION, n2o_session).
 -endif.
 
-session(Key)        -> #cx{session=SID}=get(context), n2o:info(?MODULE, "session/get:~p",[SID]), ?SESSION:get_value(SID, Key, []).
-session(Key, Value) -> #cx{session=SID}=get(context), n2o:info(?MODULE, "session/set:~p",[SID]), ?SESSION:set_value(SID, Key, Value).
+session(Key)        -> #cx{session=SID}=get(context), ?SESSION:get_value(SID, Key, []).
+session(Key, Value) -> #cx{session=SID}=get(context), ?SESSION:set_value(SID, Key, Value).
 user()              -> case session(user) of undefined -> []; E -> nitro:to_list(E) end.
 user(User)          -> session(user,User).
 
