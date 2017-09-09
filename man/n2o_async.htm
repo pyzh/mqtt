@@ -37,6 +37,9 @@ It helps here too.</p>
 
 <p>The <b>n2o_async</b> could be used with <b>n2o</b> module only (for caching facilities).</p>
 
+    </section>
+    <section>
+
 <h3>EXAMPLE</h3>
 
 <p>Here is literal implementation of N2O Timer which invalidates
@@ -100,6 +103,9 @@ process #handler{} initialization.</p>
 
 </code></figure>
 
+    </section>
+    <section>
+
 <h3>RECORDS</h3>
 
 <p>Each process is driven by its protocol which in fact a sum of protocol messages.
@@ -139,6 +145,9 @@ however it defines the type of process state, the #handler{} record.</p>
 <li>Seq &mdash; custom integer counter you can use during processing.</li>
 </ul>
 
+    </section>
+    <section>
+
 <h3>CALLBACK</h3>
 
 <h4>proc(term(),#handler{}) -> #ok{} | #reply{}.</h4>
@@ -148,6 +157,9 @@ however it defines the type of process state, the #handler{} record.</p>
 <b>handle_cast</b> and <b>handle_info</b>, its <b>init</b>
 and <b>terminate</b>. It returns either #ok as initial state of the process (which is the #handler{} too)
 or its response to <b>gen_server:call/2</b> with new state included in #reply.</p>
+
+    </section>
+    <section>
 
 <h3>API</h3>
 
@@ -187,6 +199,9 @@ Returns the response from <b>gen_server:call</b>.</p>
  ok
 
 </code></figure>
+
+    </section>
+    <section>
 
 <h3>DEPENDENCIES</h3>
 

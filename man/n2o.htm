@@ -30,6 +30,40 @@ web pages spawn WebSocket connections, workflow engines
 spawn business proceseses and chat application spawns roster
 and chatroom processes. This is managed by protocols.</p>
 
+    </section>
+    <section>
+
+<h3>RECORDS</h3>
+
+<figure><figcaption>Listing 1. N2O Metaprotocol</figcaption><code>
+   #reply { data = [] :: [] | binary(),
+            req = [] :: [] | term(),
+            state = [] :: [] | term() }.
+
+ #unknown { data = [] :: [] | binary(),
+            req = [] :: [] | term(),
+            state = [] :: [] | term() }.
+
+</code></figure>
+
+<figure><figcaption>Listing 2. N2O Context</figcaption><code>
+
+      #cx { session=[] :: [] | binary(),
+            actions=[] :: list(#),
+            state=[] :: [] | term(),
+            module=[] :: [] | atom(),
+            lang=[] :: [] | atom(),
+            path=[] :: [] | binary(),
+            formatter=bert :: bert | json,
+            node=[] :: [] | atom(),
+            client_pid=[] :: [] | pid(),
+            vsn=[] :: [] | integer() }).
+
+</code></figure>
+
+    </section>
+    <section>
+
 <h3>PROTOCOLS</h3>
 
 <p>While all application protocols in the system
@@ -43,19 +77,69 @@ priving also robust and performant upload client and file transfer protocol.
 For bulding web based NITRO applications you need to include
 <b>nitro</b> dependency.</p>
 
+<h4>info(term(),#cx{}) -> #reply{} | #unknown{}.</h4>
+
+<p>The <b>info/2</b> is a N2O protocol callback that will be called on each
+incoming request. N2O code should be embedded into applications host:
+MQTT (as ring of MQTT clients), or HTTP server or WebSocket, or raw TCP.</p>
+
+    </section>
+    <section>
+
+<h3>RPC</h3>
+
+<p>N2O provides RPC over MQ mechanism for MQTT devices. N2O spawn a set of
+vnode workers as n2o_async processes, and listen to <b>events</b> topic.
+Response are sent to <b>actions</b> topic, which is subscribed automatically on MQTT session init.</p>
+
+<figure><figcaption>Listing 3. N2O RPC Topics</figcaption><code>
+ actions/:vsn/:module/:client
+ events/:vsn/:node/:module/:user/:client/:token
+
+</code></figure>
+
+    </section>
+    <section>
+
+<h3>EXAMPLE</h3>
+
+<p>Here is little example of overring INIT protocol message from NITRO protocol
+and generate standart token stored in KVS.</p>
+
+<figure><figcaption>Listing 4. Custom INIT Protocol</figcaption><code>
+ -module(custom_init).
+ -compile(export_all).
+
+ info({init, <<>>}, Req, State = #cx{session = Session}) ->
+      {'Token', Token} = n2o_auth:gen_token([], Session),
+      #cx{params = Client} = get(context),
+      kvs:put(#'Token'{token = Token, client = Client}),
+      n2o_nitro:info({init, n2o:format(Token)}, Req, State);
+
+ info(Message,Req,State) -> {unknown,Message,Req,State}.
+
+</code></figure>
+
+    </section>
+    <section>
+
 <h3>CONFIG</h3>
 
+<p>Just put protocol implementation module name to <b>protocol</b> option in sys.config.</p>
+
 <figure><code>
-  [{n2o,[{formatter,bert},
-         {json,jsone},
-         {logging,n2o_io},
+  [{n2o,[{logging,n2o_io},
+         {formatter,n2o_format},
          {pickler,n2o_secret},
-         {erroring,n2o},
-         {protocols,[n2o_ftp,n2o_nitro]},
-         {filter,{n2o_proto,push}},
+         {log_modules,n2o},
+         {log_level,n2o},
+         {protocols,[custom_init,n2o_ftp,n2o_nitro]},
          {timer,{0,10,0}}]}].
 
 </code></figure>
+
+    </section>
+    <section>
 
 <h3>CACHE</h3>
 
@@ -70,6 +154,9 @@ but you don't need a memcache or redis if you write in Erlang.</p>
 <h4>cache(Tab, Key) -> term().</h4>
 
 <p>Gets a Value.</p>
+
+    </section>
+    <section>
 
 <h3>SESSION</h3>
 
@@ -106,18 +193,23 @@ before entering the top level N2O loop.</p>
 
 <p>Gets a Value by any Key.</p>
 
+    </section>
+    <section>
+
+<h3>FORMAT</h3>
+
+<p>Call this function for changeable at runtime socket binary formatting.</p>
+
+<h4>format(Message, bert | json) -> binary().</h4>
+
+    </section>
+    <section>
+
 <h3>LOG</h3>
 
 <p>First you need specify global module in sys.config,
-where functions <b>log_level</b> and <b>log_modules</b> are placed.</p>
-
-<figure><figcaption>Listing 2. Project Settings.</figcaption>
-<code>
- -define(LOGGER,      (application:get_env(n2o,logging,     n2o_io))).
- -define(LOG_MODULES, (application:get_env(n2o,log_modules, n2o))).
- -define(LOG_LEVEL,   (application:get_env(n2o,log_level,   n2o))).
-
-</code></figure>
+where functions <b>log_level</b> and <b>log_modules</b> are placed.
+See options in config with with same names as functions.</p>
 
 <p>Then implement these function in way of returning the list
 modules you want to trace, and global log level for them.</p>
@@ -139,17 +231,16 @@ modules you want to trace, and global log level for them.</p>
 
 <h4>warning(Module, Format, Args) -> ok | skip.</h4>
 
-
+    </section>
+    <section>
 
 <p>Also you may refer to:
 <a href="http://erlang.org/doc/man/io.html">io</a></b>,
 <a href="http://erlang.org/doc/man/ets.html">ets</a></b>,
 <a href="n2o.htm">n2o</a></b>,
-<a href="n2o_format.htm">n2o_format</a></b>,
 <a href="n2o_proto.htm"><b>n2o_proto</b></a>,
 <a href="n2o_async.htm"><b>n2o_async</b></a>,
-<a href="n2o_ftp.htm"><b>n2o_ftp</b></a>,
-<a href="n2o_nitro.htm"><b>n2o_nitro</b></a>,
+<a href="n2o_async.htm"><b>n2o_vnode</b></a>.
 </p>
 
     </section>
