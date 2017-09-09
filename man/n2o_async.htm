@@ -20,20 +20,83 @@
 <main>
     <section>
 
+
 <h3>INTRO</h3>
 
-<p>The <b>n2o_async</b> module is a simplified way to create
-local protocols for Erlang/OTP <b>gen_server</b>. Each protocol
-then can be spawned under Erlang/OTP supervision.
-Such spawned protocol handlers can be selected by <b>n2o</b>.
-cache, which is ETS.</p>
 
-<h4>proc(Message,#handler{}) -> #ok{} | #reply{}.</h4>
+<p>The <b>n2o_async</b> module is a simplified way to create
+local erlang processes as async services for external services, timers, system services.</p>
+
+<h3>EXAMPLE</h3>
+
+<p>Here is literal implementation of N2O Timer which invalidates
+   the caching table used for session variables.</p>
+
+        <figure>
+            <figcaption>Listing 1. Invalidate Cache by Timer</figcaption>
+<code>
+ proc(init,#handler{}=Async) ->
+     {ok,Async#handler{state=timer(ping())}};
+
+ proc({timer,ping},#handler{state=Timer}=Async) ->
+     erlang:cancel_timer(Timer),
+     io:format("n2o Timer: ~p\r~n",[ping]),
+     n2o:invalidate_cache(caching),
+     {reply,ok,Async#handler{state=timer_restart(ping())}}.
+
+ timer(Diff) ->
+     {X,Y,Z} = Diff,
+     erlang:send_after(1000*(Z+60*Y+60*60*X),self(),{timer,ping}).
+
+ ping() ->
+     application:get_env(n2o,timer,{0,1,0}).
+
+</code></figure>
+
+<p>Main purpose of <b>n2o_async</b> is to create such processes from
+single <b>proc/2</b> function and track pid in ETS table which is specified during
+process #handler{} initialization.</p>
+
+        <figure>
+            <figcaption>Listing 1. Understaning n2o_async</figcaption>
+<code>
+ 1> supervisor:which_children(n2o).
+ [{{ring,4},<0.1661.0>,worker,[n2o_vnode]},
+  {{ring,3},<0.1655.0>,worker,[n2o_vnode]},
+  {{ring,2},<0.1653.0>,worker,[n2o_vnode]},
+  {{ring,1},<0.1651.0>,worker,[n2o_vnode]},
+  {{caching,"timer"},<0.1604.0>,worker,[n2o]}]
+
+ 2> ets:tab2list(ring).
+ [{{ring,4},infinity,<0.1661.0>},
+ {{ring,1},infinity,<0.1651.0>},
+ {{ring,2},infinity,<0.1653.0>},
+ {{ring,3},infinity,<0.1655.0>}]
+
+ 3> ets:tab2list(caching).
+ [{{caching,"timer"},infinity,<0.1604.0>}]
+
+ 4> n2o_async:send(caching,"timer",{timer,ping}).
+ n2o Timer: ping
+ ok
+
+ 5> n2o_async:pid(caching,"timer").
+ <0.1604.0>
+
+</code></figure>
+
+<h3>RECORDS</h3>
+
+<h3>CALLBACK</h3>
+
+<h4>proc(term(),#handler{}) -> #ok{} | #reply{}.</h4>
 
 <p>The <b>proc/2</b> is a callback that will be called on each
 <b>gen_server</b>'s calls: <b>handle_call</b>,
 <b>handle_cast</b> and <b>handle_info</b>, its <b>init</b>
 and <b>terminate</b>.</p>
+
+<h3>API</h3>
 
 <h4>start(#handler{}) -> {atom(),term()} | .</h4>
 

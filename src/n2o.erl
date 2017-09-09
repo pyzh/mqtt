@@ -192,7 +192,7 @@ proc({timer,ping},#handler{state=Timer}=Async) ->
 timer_restart(Diff) -> {X,Y,Z} = Diff, erlang:send_after(1000*(Z+60*Y+60*60*X),self(),{timer,ping}).
 ping() -> application:get_env(n2o,timer,{0,1,0}).
 
-invalidate_cache(Table) -> ets:foldl(fun(X,_) -> n2o:cache(Table,element(1,X)) end, 0, caching).
+invalidate_cache(Table) -> ets:foldl(fun(X,_) -> n2o:cache(Table,element(1,X)) end, 0, Table).
 
 ttl() -> application:get_env(n2o,ttl,60*1).
 till(Now,TTL) ->
