@@ -24,11 +24,16 @@
 
 <p>The <b>n2o</b> defines the way you create, configure and run
 arbitrary applications and protocols inside some hosts, into
-which <b>n2o</b> is injected, such as <b>cowboy</b> and <b>emqttd</b>.
-Each application can spawn its instance in own way, like
+which N2O can be injected, such as <b>cowboy</b> and <b>emqttd</b>.
+Each application can spawn its instance in its own way, like
 web pages spawn WebSocket connections, workflow engines
-spawn business proceseses and chat application spawns roster
-and chatroom processes. This is managed by protocols.</p>
+spawn business proceseses and chat applications spawns roster
+and chatroom processes. With N2O everything is managed by protocols.</p>
+
+<p>The N2O itself a an enbeddable protocol loop. However besides that
+it handles cache and session ETS tables along with flexible async
+processes with no ownership restriction. It also introduces logging
+approach, AES/CBC-128 pickling along with BERT/JSON formatter.</p>
 
     </section>
     <section>
@@ -205,6 +210,17 @@ before entering the top level N2O loop.</p>
     </section>
     <section>
 
+<h3>PICKLE</h3>
+
+<p>Call this function for changeable at runtime term pickling.</p>
+
+<h4>pickle(term()) -> binary().</h4>
+
+<h4>depickle(binary()) -> term().</h4>
+
+    </section>
+    <section>
+
 <h3>LOG</h3>
 
 <p>First you need specify global module in sys.config,
@@ -237,7 +253,6 @@ modules you want to trace, and global log level for them.</p>
 <p>This module may refer to:
 <a href="http://erlang.org/doc/man/io.html">io</a></b>,
 <a href="http://erlang.org/doc/man/ets.html">ets</a></b>,
-<a href="n2o.htm">n2o</a></b>,
 <a href="n2o_async.htm">n2o_asynrc</a></b>,
 <a href="n2o_proto.htm"><b>n2o_proto</b></a>.
 </p>

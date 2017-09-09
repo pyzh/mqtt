@@ -22,24 +22,58 @@
 
 <h3>INTRO</h3>
 
-<p>The formatter provides simple format/2 interface
-to protocol implementations.</p>
-
-<h4>format(Message, Formatter :: atom()) -> binary().</h4>
-
-<p>Encode the message according to formatter implemetation.</p>
+<p>N2O as an embaddable framework provides two exports for loop entrance.</p>
 
     </section>
     <section>
 
-<p>This module may refer to:
+<h3>API</h3>
+
+<p>The n2o_proto protocol loop is compatible with cowboy and emqttd versions of N2O.
+The main purpose of this API is to embedd N2O into your functional endpoint.
+In other cases it's called authomaticaly by configuration.</p>
+
+<h4>stream({ text | binary, binary() }, term(), term()) -> #reply{}.</h4>
+
+<p>The stream function is dedicated for <b>cowboy</b> version of n2o.</p>
+
+<h4>info(term(), term(), term()) -> #reply{}.</h4>
+
+<p>The info function is dedicated for <b>emqttd</b> version of n2o.</p>
+
+<h4>push(term(), term(), term(), term(), term()) -> #reply{}.</h4>
+
+<p>The raw protocol chain processing without using using filtering.
+You can intercep all messages from stream and info by settin filter functiong in sys.config.</p>
+
+    </section>
+    <section>
+
 
 <h3>CONFIG</h3>
 
 <figure>
 <pre>
-  [{n2o,[{formatter,bert},
-         {json,jsone}]}].
+  [{n2o,[{protocols,[n2o_nitro]},
+         {filter,{n2o_proto,push}}]}].
+</pre></figure>
+
+    </section>
+    <section>
+
+
+<h3>IMPLEMENTATION</h3>
+
+<figure>
+<pre>
+nop(R,S)                  -> {reply,{binary,<<>>},R,S}.
+reply(M,R,S)              -> {reply,M,R,S}.
+push(_,R,S,[],_)          -> nop(R,S);
+push(M,R,S,[H|T],Acc)     ->
+    case H:info(M,R,S) of
+         {unknown,_,_,_}  -> push(M,R,S,T,Acc);
+         {reply,M1,R1,S1} -> reply(M1,R1,S1);
+                        A -> push(M,R,S,T,[A|Acc]) end.
 </pre></figure>
 
     </section>
@@ -47,7 +81,7 @@ to protocol implementations.</p>
 
 <p>This module may refer to:
 <a href="n2o.htm"><b>n2o</b></a>,
-<a href="n2o_async.htm"><b>n2o_async</b></a>,
+<a href="n2o_async.htm"><b>n2o_async</b></a>.
 </p>
 
     </section>

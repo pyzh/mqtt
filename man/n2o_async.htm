@@ -23,19 +23,25 @@
 
 <h3>INTRO</h3>
 
+<p>The <b>n2o_async</b> module dedicated for creating and tracking supervised
+processes across all applications, using any ETS tables. Any supervised process in N2O
+is created using n2o_async, such as: ring vnodes, timers, authorization,
+web page processes, test processes and other services. Loop process inside <b>info/2</b> protocol handlers
+should spawn new async processes <b>proc/2</b> in case of time consuming opetations,
+because protocol handler is a critical path and it should be handled as soon as possible.</p>
 
-<p>The <b>n2o_async</b> module is a simplified gen_server replacement, which remains compatible with Erlang/OTP.
-N2O provide its own style of concurrent process programming that is reduced to a single <b>proc/2</b> callback
-function which can be implemented in any module, and can be supervised by any application supervisor in runtime.
-Supervised processes (their pids) are indexed by ETS tables. There tables could be created by any application.
-No owning restrictions. In this way you can spawn supervised processes under any application using any ETS
-table across all your project without any efforts in a uniform and simplest way possible.</p>
+    </section>
+    <section>
 
-<p> The overall size of <b>n2o_async</b> is 59 lines of code. This very thin wrapper around gen_server.
-The usage of pure <b>gen_server</b> leads to code duplication and readability issues in team works.
-It helps here too.</p>
+<h3>CALLBACK</h3>
 
-<p>The <b>n2o_async</b> could be used with <b>n2o</b> module only (for caching facilities).</p>
+<h4>proc(term(),#handler{}) -> #ok{} | #reply{}.</h4>
+
+<p>The <b>proc/2</b> is a callback that will be called on each
+<b>gen_server</b>'s calls: <b>handle_call</b>,
+<b>handle_cast</b> and <b>handle_info</b>, its <b>init</b>
+and <b>terminate</b>. It returns either #ok as initial state of the process (which is the #handler{} too)
+or its response to <b>gen_server:call/2</b> with new state included in #reply.</p>
 
     </section>
     <section>
@@ -148,19 +154,6 @@ however it defines the type of process state, the #handler{} record.</p>
     </section>
     <section>
 
-<h3>CALLBACK</h3>
-
-<h4>proc(term(),#handler{}) -> #ok{} | #reply{}.</h4>
-
-<p>The <b>proc/2</b> is a callback that will be called on each
-<b>gen_server</b>'s calls: <b>handle_call</b>,
-<b>handle_cast</b> and <b>handle_info</b>, its <b>init</b>
-and <b>terminate</b>. It returns either #ok as initial state of the process (which is the #handler{} too)
-or its response to <b>gen_server:call/2</b> with new state included in #reply.</p>
-
-    </section>
-    <section>
-
 <h3>API</h3>
 
 <h4>start(#handler{}) -> {pid(),term()} | #error{}.</h4>
@@ -186,15 +179,19 @@ Returns the response from <b>gen_server:call</b>.</p>
 <p>Returns pid that was stored during process initialization in Class table with Name key.</p>
 
 <figure><figcaption>Listing 5. gen_server compatibility.</figcaption><code>
- 1> n2o_async:pid(caching,"timer") ! {timer,ping}.
+ 1> n2o_async:pid(caching,"timer") 
+                 ! {timer,ping}.
  n2o Timer: ping
  {timer,ping}
 
- 2> n2o_async:send(caching,"timer",{timer,ping}).
+ 2> n2o_async:send(caching,"timer",
+                   {timer,ping}).
  n2o Timer: ping
  ok
 
- 3> gen_server:call(n2o_async:pid(caching,"timer"),{timer,ping}).
+ 3> gen_server:call(
+    n2o_async:pid(caching,"timer"),
+                  {timer,ping}).
  n2o Timer: ping
  ok
 
@@ -204,7 +201,9 @@ Returns the response from <b>gen_server:call</b>.</p>
     <section>
 
 <p>This module may refer to:
-<b><a href="n2o.htm">n2o</a></b>,
+<b>
+<a href="n2o.htm">n2o</a></b>,
+<a href="n2o_proto.htm">n2o_proto</a></b>,
 <a href="http://erlang.org/doc/man/gen_server.html"><b>gen_server</b></a>,
 <a href="http://erlang.org/doc/man/supervisor.html"><b>supervisor</b></a>.
 </p>
