@@ -53,16 +53,10 @@ Credits
 History
 -------
 
-<<<<<<< HEAD
-4.5 — Basic Messaging with single topic and Echo
-4.6 — Echo eliminated Basic Filter with req/rep topics
-4.7 — DHT supervised node for server MQTT connections
-4.9 — Cleaned n2o_async, written manpage
-=======
 * 4.5 — Basic Messaging with single topic and Echo
 * 4.6 — Echo eliminated Basic Filter with req/rep topics
 * 4.7 — DHT supervised node for server MQTT connections
 * 4.9 — Subscribe offline clients
->>>>>>> 3bce28563b101148ae18a40c7486ab18724ab457
+* 4.9.3 — Cleaned n2o_async, written manpage
 
 OM A HUM
