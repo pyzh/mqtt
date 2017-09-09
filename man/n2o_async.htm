@@ -32,9 +32,7 @@ local erlang processes as async services for external services, timers, system s
 <p>Here is literal implementation of N2O Timer which invalidates
    the caching table used for session variables.</p>
 
-        <figure>
-            <figcaption>Listing 1. Invalidate Cache by Timer</figcaption>
-<code>
+<figure><figcaption>Listing 1. Invalidate Cache by Timer</figcaption><code>
  proc(init,#handler{}=Async) ->
      {ok,Async#handler{state=timer(ping())}};
 
@@ -53,13 +51,20 @@ local erlang processes as async services for external services, timers, system s
 
 </code></figure>
 
+<figure><figcaption>Listing 1. Invalidate Cache by Timer</figcaption><code>
+ > n2o_async:start(#handler{ module=n2o,
+                             class=caching,
+                             group=n2o,
+                             state=[],
+                             name="timer"}).
+
+</code></figure>
+
 <p>Main purpose of <b>n2o_async</b> is to create such processes from
 single <b>proc/2</b> function and track pid in ETS table which is specified during
 process #handler{} initialization.</p>
 
-        <figure>
-            <figcaption>Listing 1. Understaning n2o_async</figcaption>
-<code>
+<figure><figcaption>Listing 2. Understaning n2o_async</figcaption><code>
  1> supervisor:which_children(n2o).
  [{{ring,4},<0.1661.0>,worker,[n2o_vnode]},
   {{ring,3},<0.1655.0>,worker,[n2o_vnode]},
@@ -87,6 +92,27 @@ process #handler{} initialization.</p>
 
 <h3>RECORDS</h3>
 
+<figure><figcaption>Listing 3. Erlang/OTP Records</figcaption><code>
+      #ok { code = [] :: [] | #handler{} }.
+
+   #error { code = [] :: [] | term() }.
+
+   #reply { data = [] :: [] | term() ,
+            code = [] :: [] | #handler{} }.
+
+</code></figure>
+
+<figure><figcaption>Listing 4. N2O Records</figcaption><code>
+ #handler { name   = [] :: [] | term(),
+            module = [] :: [] | atom(),
+            class  = [] :: [] | atom(),
+            group  = [] :: [] | atom(),
+            config = [] :: [] | term(),
+            state  = [] :: [] | term(),
+            seq    = [] :: [] | integer() }.
+
+</code></figure>
+
 <h3>CALLBACK</h3>
 
 <h4>proc(term(),#handler{}) -> #ok{} | #reply{}.</h4>
@@ -94,36 +120,55 @@ process #handler{} initialization.</p>
 <p>The <b>proc/2</b> is a callback that will be called on each
 <b>gen_server</b>'s calls: <b>handle_call</b>,
 <b>handle_cast</b> and <b>handle_info</b>, its <b>init</b>
-and <b>terminate</b>.</p>
+and <b>terminate</b>. It returns either #ok as initial state of the process (which is the #handler{} too)
+or its response to <b>gen_server:call/2</b> with new state included in #reply.</p>
 
 <h3>API</h3>
 
-<h4>start(#handler{}) -> {atom(),term()} | .</h4>
+<h4>start(#handler{}) -> {pid(),term()} | #error{}.</h4>
 
-<p>Spawns <b>proc/2</b> function inside gen_server under supervision.</p>
+<p>Spawns <b>proc/2</b> function inside a process under supervision.</p>
 
-<h4> init(Pid,Class,Name) -> type gen_server:call/2.</h4>
+<h4>stop(Pid,Class,Name) -> #handler{} | #error{}.</h4>
 
-<p>Put Pid in <b>n2o</b> cache and also remember the caller
-Pid for <b>n2o</b> messages.</p>
+<p>Kills the process and remove from supervision.</p>
 
-<h4>flush(Channel) -> type gen_server:call/2.</h4>
+<h4>restart(Class,Name) -> {pid(),term()} | #error{} | #handler{}.</h4>
 
 <p>Send FLUSH message with current actions in process dictionary,
 then cleanup all actions.
 </p>
 
-<h4> send(Class,Name,Message) -> type gen_server:call/2. </h4>
+<h4> send(Class,Name,Message) -> term(). </h4>
 
-<p>Sends <b>gen_call</b> message to process by <b>Class,Name}</b>
-key, which was stored in cache during initialization.
+<p>Sends <b>gen_call</b> message to process, taken from Class table with Name key.
+Returns the response from <b>gen_server:call</b>.</p>
 </p>
 
-<h3>OTHER</h3>
+<h4> pid(Class,Name) -> pid(). </h4>
 
-<p>Also you may refer to:
+<p>Returns pid that was stored during process initialization in Class table.</p>
+
+<figure><figcaption>Listing 5. gen_server compatibility.</figcaption><code>
+ 1> n2o_async:pid(caching,"timer") ! {timer,ping}.
+ n2o Timer: ping
+ {timer,ping}
+
+ 2> n2o_async:send(caching,"timer",{timer,ping}).
+ n2o Timer: ping
+ ok
+
+ 3> gen_server:call(n2o_async:pid(caching,"timer"),{timer,ping}).
+ n2o Timer: ping
+ ok
+
+</code></figure>
+
+<h3>DEPENDENCIES</h3>
+
+<p>This module may refer to:
 <b><a href="n2o.htm">n2o</a></b>,
-<a href="n2o_nitro.htm"><b>n2o_nitro</b></a>.
+<a href="http://erlang.org/doc/man/gen_server.html"><b>gen_server</b></a>, <a href="http://erlang.org/doc/man/supervisor.html"><b>supervisor</b></a>.
 </p>
 
     </section>
