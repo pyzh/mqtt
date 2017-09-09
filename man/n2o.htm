@@ -36,28 +36,28 @@ and chatroom processes. This is managed by protocols.</p>
 <h3>RECORDS</h3>
 
 <figure><figcaption>Listing 1. N2O Metaprotocol</figcaption><code>
-   #reply { data = [] :: [] | binary(),
-            req = [] :: [] | term(),
+   #reply { data  = [] :: [] | binary(),
+            req   = [] :: [] | term(),
             state = [] :: [] | term() }.
 
- #unknown { data = [] :: [] | binary(),
-            req = [] :: [] | term(),
+ #unknown { data  = [] :: [] | binary(),
+            req   = [] :: [] | term(),
             state = [] :: [] | term() }.
 
 </code></figure>
 
 <figure><figcaption>Listing 2. N2O Context</figcaption><code>
 
-      #cx { session=[] :: [] | binary(),
-            actions=[] :: list(#),
-            state=[] :: [] | term(),
-            module=[] :: [] | atom(),
-            lang=[] :: [] | atom(),
-            path=[] :: [] | binary(),
-            formatter=bert :: bert | json,
-            node=[] :: [] | atom(),
-            client_pid=[] :: [] | pid(),
-            vsn=[] :: [] | integer() }).
+      #cx { session   = [] :: [] | binary(),
+            formatter = bert :: bert | json,
+            actions   = [] :: list(tuple()),
+            state     = [] :: [] | term(),
+            module    = [] :: [] | atom(),
+            lang      = [] :: [] | atom(),
+            path      = [] :: [] | binary(),
+            node      = [] :: [] | atom(),
+            pid       = [] :: [] | pid(),
+            vsn       = [] :: [] | integer() }).
 
 </code></figure>
 
