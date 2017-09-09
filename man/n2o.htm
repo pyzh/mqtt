@@ -14,7 +14,7 @@
 
 <header>
     <a href="../index.html"><img src="https://n2o.space/img/Synrc Neo.svg"></a>
-    <h1>N2O Protocol Server</h1>
+    <h1>N2O API</h1>
 </header>
 
 <main>
@@ -52,7 +52,89 @@ For bulding web based NITRO applications you need to include
        {protocols,[n2o_ftp,n2o_nitro]},
        {filter,{n2o_proto,push}},
        {timer,{0,10,0}}]}].
-</pre><figure>
+</pre></figure>
+
+
+<h3>CACHE</h3>
+
+<p>Cache turns each ETS store into expirable. Just put values onto keys using these
+functions and system timer will clear expired entries eventually. CACHE is like a memcache or redis,
+but you don't need a memcache or redis if you write in Erlang.</p>
+
+<h4>cache(Tab, Key, Value, Till) -> term().</h4>
+
+<p>Sets a Value with a given TTL.</p>
+
+<h4>cache(Tab, Key) -> term().</h4>
+
+<p>Gets a Value.</p>
+
+<h3>SESSION</h3>
+
+<p>Sessions are stored in <b>cookies</b> table and indexed by security token which
+is usually a password based token. All session variables from all users are stored in this table.
+each users see only its variables indexed by his token. Sessions like a Cache are expirable.
+Technically, N2O sessions are the server controlling mechanism of JavaScript cookies.</p>
+
+<h4>session(Key, Value) -> term().</h4>
+
+<p>Sets a Value into ETS table <b>cookies</b> for a token from #cx.session which
+is set there earlier from INIT message or MQTT headers,
+before entering the top level N2O loop.</p>
+
+<figure><figcaption>Listing 1. </figcaption>
+<code>
+ 1> rr(n2o).
+ [bin,client,cx,direct,ev,flush,ftp,ftpack,handler,
+  mqtt_client,mqtt_message,pickle,server]
+ 2> put(context,#cx{session=10}).
+ undefined
+ 3> n2o:session(user,maxim).
+ maxim
+ 4> ets:tab2list(cookies).
+ [{{10,user},
+   <<"/">>,
+   {1504,977449,476430},
+   {{2017,9,9},{20,32,29}},
+   maxim}]
+
+</code></figure>
+
+<h4>session(Key) -> term().</h4>
+
+<p>Gets a Value by any Key.</p>
+
+<h3>LOG</h3>
+
+<p>First you need specify global module in sys.config,
+where functions <b>log_level</b> and <b>log_modules</b> are placed.</p>
+
+<figure><figcaption>Listing 2. Project Settings.</figcaption>
+<code>
+ -define(LOG_MODULES, (application:get_env(n2o,log_modules,n2o))).
+ -define(LOG_LEVEL,   (application:get_env(n2o,log_level,n2o))).
+
+</code></figure>
+
+<p>Then implement these function in way of returning the list
+modules you want to trace, and global log level for them.</p>
+
+<figure><figcaption>Listing 3. Log Framework</figcaption>
+<code>
+ log_modules() -> [n2o,n2o_async,n2o_proto].
+ log_level() -> info.
+
+</code></figure>
+
+<p>In your code you should use following trace functions:</p>
+
+<h4>error(Module, Format, Args) -> ok | skip.</h4>
+
+<h4>info(Module, Format, Args) -> ok | skip.</h4>
+
+<h4>warning(Module, Format, Args) -> ok | skip.</h4>
+
+
 
 <p>Also you may refer to: <a href="n2o_format.htm">n2o_format</a></b>,
 <a href="n2o_proto.htm"><b>n2o_proto</b></a>,
