@@ -33,10 +33,12 @@
 The main purpose of this API is to embedd N2O into your functional endpoint.
 In other cases it's called automatically by configuration.</p>
 
+<a name=stream></a>
 <h4>stream({ text | binary, binary() }, term(), term()) -> #reply{}.</h4>
 
 <p>The stream function is dedicated for <b>cowboy</b> version of n2o.</p>
 
+<a name=info></a>
 <h4>info(term(), term(), term()) -> #reply{}.</h4>
 
 <p>The info function is dedicated for <b>emqttd</b> version of n2o.</p>
@@ -44,7 +46,7 @@ In other cases it's called automatically by configuration.</p>
 <h4>push(term(), term(), term(), term(), term()) -> #reply{}.</h4>
 
 <p>The raw protocol chain processing without using using filtering.
-You can intercept all messages from <b>stream/3</b> and <b>info/3</b> by
+You can intercept all messages from <a href="#stream">stream/3</a> and <a href="#info">info/3</a> by
 setting filter function in sys.config.</p>
 
     </section>
