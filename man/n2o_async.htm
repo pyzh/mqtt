@@ -168,7 +168,7 @@ however it defines the type of process state, the #handler{} record.</p>
 
 <p>Tries to stop the process. On success it starts the new one, else return error.</p>
 
-<h4>send(Class,Name,Message::term()) -> term(). </h4>
+<h4>send(Class,Name,term()) -> term(). </h4>
 
 <p>Sends <b>gen_call</b> message to process, taken from Class table with Name key.
 Returns the response from <b>gen_server:call</b>.</p>
