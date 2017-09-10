@@ -54,10 +54,10 @@ setting filter function in sys.config.</p>
 <h3>CONFIG</h3>
 
 <figure>
-<pre>
+<code>
   [{n2o,[{protocols,[n2o_nitro]},
          {filter,{n2o_proto,push}}]}].
-</pre></figure>
+</code></figure>
 
     </section>
     <section>
@@ -66,7 +66,7 @@ setting filter function in sys.config.</p>
 <h3>IMPLEMENTATION</h3>
 
 <figure>
-<pre>
+<code>
 nop(R,S)                  -> {reply,{binary,<<>>},R,S}.
 reply(M,R,S)              -> {reply,M,R,S}.
 push(_,R,S,[],_)          -> nop(R,S);
@@ -75,7 +75,7 @@ push(M,R,S,[H|T],Acc)     ->
          {unknown,_,_,_}  -> push(M,R,S,T,Acc);
          {reply,M1,R1,S1} -> reply(M1,R1,S1);
                         A -> push(M,R,S,T,[A|Acc]) end.
-</pre></figure>
+</code></figure>
 
     </section>
     <section>
