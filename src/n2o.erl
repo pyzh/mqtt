@@ -278,6 +278,9 @@ session(Key, Value) -> #cx{session=SID}=get(context), ?SESSION:set_value(SID, Ke
 user()              -> case session(user) of undefined -> []; E -> nitro:to_list(E) end.
 user(User)          -> session(user,User).
 
+subscribe(X,Y) -> subscribe_cli(X,Y).
+unsubscribe(X,Y) -> unsubscribe_cli(X,Y).
+
 subscribe_cli(ClientId, TopicTable) ->
     [ begin
         kvs:put({mqtt_subscription, ClientId, Topic}),
