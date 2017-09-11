@@ -40,13 +40,13 @@ approach, AES/CBC-128 pickling along with BERT/JSON formatter.</p>
 
 <h3>RECORDS</h3>
 
-<figure><code>
+<figure><figcaption>Listing 1. Erlang/OTP records</figcaption><code>
       #ok { data  = [] :: term() }.
    #error { data  = [] :: term() }.
 
 </code></figure>
 
-<figure><figcaption>Listing 1. N2O Metaprotocol</figcaption><code>
+<figure><figcaption>Listing 2. N2O Protocol</figcaption><code>
    #reply { data  = [] :: [] | binary(),
             req   = [] :: [] | term(),
             state = [] :: [] | term() }.
@@ -57,8 +57,7 @@ approach, AES/CBC-128 pickling along with BERT/JSON formatter.</p>
 
 </code></figure>
 
-<figure><figcaption>Listing 2. N2O Context</figcaption><code>
-
+<figure><figcaption>Listing 3. N2O State</figcaption><code>
       #cx { session   = [] :: [] | binary(),
             formatter = bert :: bert | json,
             actions   = [] :: list(tuple()),
@@ -97,16 +96,29 @@ MQTT (as ring of MQTT clients), or HTTP server or WebSocket, or raw TCP.</p>
     </section>
     <section>
 
-<h3>RPC</h3>
+<h3>RPC MQTT</h3>
 
 <p>N2O provides RPC over MQ mechanism for MQTT devices. N2O spawn a set of
 <a href="n2o_vnode.htm">n2o_vnode</a> workers as <a href="n2o_async.htm">n2o_async</a>
 processes that listen to <b>events</b> topic. Response are sent to <b>actions</b> topic,
 which is subscribed automatically on MQTT session init.</p>
 
-<figure><figcaption>Listing 3. N2O RPC Topics</figcaption><code>
+<figure><figcaption>Listing 4. MQTT RPC Topics</figcaption><code>
  actions/:vsn/:module/:client
  events/:vsn/:node/:module/:user/:client/:token
+
+</code></figure>
+
+    </section>
+    <section>
+
+<h3>RPC WebSocket</h3>
+
+<p>In pure WebSocket case N2O implements <a href="n2o_proto.htm">n2o_proto</a> as cowboy module supporting binary and text messages.</p>
+
+<figure><figcaption>Listing 5. Cowboy stream protocol</figcaption><code>
+ #binary { data :: binary() }.
+   #text { data :: binary() }.
 
 </code></figure>
 
@@ -118,7 +130,7 @@ which is subscribed automatically on MQTT session init.</p>
 <p>Here is little example of overriding INIT protocol message from NITRO protocol
 and generate standart token stored in KVS.</p>
 
-<figure><figcaption>Listing 4. Custom INIT Protocol</figcaption><code>
+<figure><figcaption>Listing 6. Custom INIT Protocol</figcaption><code>
  -module(custom_init).
  -compile(export_all).
 
@@ -207,6 +219,17 @@ Default n2o cache implementation just turns each ets store into expirable.</p>
 
 <h4>format(Message, bert | json) -> binary().</h4>
 
+<figure><code>
+ > io:format("~ts~n",[n2o:format(#io{},json)]).
+ {"t":104,"v":[{"t":100,"v":"io"},{"t":109,"v":""},{"t":109,"v":[131,106]}]}
+ ok
+
+ > binary_to_term(element(2,n2o:format(#ftp{},bert))).
+ #ftpack{id = [],sid = [],filename = [],meta = [],size = [],
+         offset = [],block = [],data = [],status = []}
+
+</code></figure>
+
     </section>
     <section>
 
@@ -219,7 +242,7 @@ See options in config with with same names as functions.</p>
 <p>Then implement these function in way of returning the list
 modules you want to trace, and global log level for them.</p>
 
-<figure><figcaption>Listing 3. Log Framework</figcaption>
+<figure><figcaption>Listing 7. Log Framework</figcaption>
 <code>
  log_modules() -> [n2o,n2o_async,n2o_proto].
  log_level() -> info.
@@ -252,7 +275,7 @@ Technically, N2O sessions are the server controlling mechanism of JavaScript coo
 is set there earlier from INIT message or MQTT headers,
 before entering the top level N2O loop.</p>
 
-<figure><figcaption>Listing 1. </figcaption>
+<figure><figcaption>Listing 8. Sessions</figcaption>
 <code>
  1> rr(n2o).
  [bin,client,cx,direct,ev,flush,ftp,ftpack,handler,

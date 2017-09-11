@@ -33,9 +33,10 @@ number of such instanses is usually equals to the number of cores.</p>
     </section>
     <section>
 
-<h3>TOPICS</h3>
+<h3>PROTOCOL</h3>
 
-<p>Virtual node on init performs a subscription with its number in the ring as a name.</p>
+<p>On init n2o_vnode makes connection to MQTT server.
+On connection it subscribes to events topic.</p>
 
 <figure>
 <code>
@@ -44,19 +45,19 @@ number of such instanses is usually equals to the number of cores.</p>
 </code>
 </figure>
 
-    </section>
-    <section>
-
-<h3>PROTOCOL</h3>
-
 <p>After supscription all messages that are being sent to <b>events</b> topic are
-passed as <b>#publish/2</b> the <a href="n2o_async.htm">n2o_async</a> process where <a href="n2o_proto.htm#info">n2o_proto:info/3</a> protocol loop is
+passed as <b>#publish/2</b> where <a href="n2o_proto.htm#info">n2o_proto:info/3</a> protocol loop is
 embedded as handler to that message.</p>
 
 <figure>
 <code>
+ init
+
  #publish{topic=[] :: binary(),
           message=[] :: binary()}.
+
+ #mqttc{client::pid(),
+        status::connected}.
 
 </code>
 </figure>
