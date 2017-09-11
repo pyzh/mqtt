@@ -224,9 +224,9 @@ Default n2o cache implementation just turns each ets store into expirable.</p>
  {"t":104,"v":[{"t":100,"v":"io"},{"t":109,"v":""},{"t":109,"v":[131,106]}]}
  ok
 
- > binary_to_term(element(2,n2o:format(#ftp{},bert))).
- #ftpack{id = [],sid = [],filename = [],meta = [],size = [],
-         offset = [],block = [],data = [],status = []}
+ > n2o:format(#ok{code=undefined},bert).
+ {binary,<<131,104,2,100,0,2,111,107,100,0,9,117,110,100,
+           101,102,105,110,101,100>>}
 
 </code></figure>
 
