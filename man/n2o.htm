@@ -101,7 +101,7 @@ MQTT (as ring of MQTT clients), or HTTP server or WebSocket, or raw TCP.</p>
 
 <p>N2O provides RPC over MQ mechanism for MQTT devices. N2O spawn a set of
 <a href="n2o_vnode.htm">n2o_vnode</a> workers as <a href="n2o_async.htm">n2o_async</a>
-processes, and listen to <b>events</b> topic. Response are sent to <b>actions</b> topic,
+processes that listen to <b>events</b> topic. Response are sent to <b>actions</b> topic,
 which is subscribed automatically on MQTT session init.</p>
 
 <figure><figcaption>Listing 3. N2O RPC Topics</figcaption><code>
