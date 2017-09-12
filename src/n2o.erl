@@ -47,13 +47,13 @@ bench() -> [bench_mqtt(),bench_otp()].
 run()   -> 10000.
 
 bench_mqtt() -> N = run(), {T,_} = timer:tc(fun() -> [ begin Y = nitro:to_list(X rem 16), 
-    n2o:send_reply(<<>>,iolist_to_binary(["events/1/",Y]),term_to_binary([])) 
+    n2o:send_reply(<<"clientId">>,iolist_to_binary(["events/1/",Y]),term_to_binary(X))
                                end || X <- lists:seq(1,N) ], ok end),
            {mqtt,trunc(N*1000000/T),"msgs/s"}.
 
 bench_otp() -> N = run(), {T,_} = timer:tc(fun() ->
      [ n2o_ring:send({publish, nitro:to_binary("events/1/" ++ nitro:to_list((X rem length(n2o:ring())) + 1) ++
-                 "/index/anon/room/"), term_to_binary(X)}) 
+                 "/index/anon/room/"), term_to_binary(X)})
                 || X <- lists:seq(1,N) ], ok end),
            {otp,trunc(N*1000000/T),"msgs/s"}.
 

@@ -196,17 +196,22 @@ Default n2o cache implementation just turns each ets store into expirable.</p>
 <p>The minimal requirement for any framework is to pub/sub API.
    N2O provides selectable API through <b>mq</b> environment parameter.</p>
 
-<h4>subscribe(Client, Topic) -> term().</h4>
+<h4>subscribe(Client, Topic, Options) -> term().</h4>
 
-<p>Sets a Value with a given TTL.</p>
+<p>Subscribe an absctract client to a transient topic. In particular
+   implementation the semantics could differ. In MQTT you can subscribe
+   offline/online clients to any persistent topics.</p>
 
 <h4>unsubscribe(Client, Topic) -> term().</h4>
 
-<p>Sets a Value with a given TTL.</p>
+<p>Unsubscribe an abstract client from a transient topic. In MQTT
+   we remove the subscription from persistent database.</p>
 
-<h4>publish(Topic, Message) -> term().</h4>
+<h4>publish(Topic, Message, Options) -> term().</h4>
 
-<p>Gets a Value.</p>
+<p>Publish a message to a topic. In MQTT if clients are offline
+they will receive offline messages from the
+inflight srotarge once they become online.</p>
 
     </section>
     <section>
