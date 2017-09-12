@@ -202,7 +202,7 @@ Default n2o cache implementation just turns each ets store into expirable.</p>
    implementation the semantics could differ. In MQTT you can subscribe
    offline/online clients to any persistent topics.</p>
 
-<h4>unsubscribe(Client, Topic) -> term().</h4>
+<h4>unsubscribe(Client, Topic, Options) -> term().</h4>
 
 <p>Unsubscribe an abstract client from a transient topic. In MQTT
    we remove the subscription from persistent database.</p>
