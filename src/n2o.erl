@@ -278,8 +278,11 @@ session(Key, Value) -> #cx{session=SID}=get(context), ?SESSION:set_value(SID, Ke
 user()              -> case session(user) of undefined -> []; E -> nitro:to_list(E) end.
 user(User)          -> session(user,User).
 
-subscribe(X,Y) -> subscribe_cli(X,Y).
-unsubscribe(X,Y) -> unsubscribe_cli(X,Y).
+subscribe(X,Y) -> subscribe(X,Y,[{qos,2}]).
+subscribe(X,Y,[{qos,Z}]) -> subscribe_cli(X,[{Y,Z}]).
+
+unsubscribe(X,Y) -> unsubscribe(X,Y,[{qos,2}]).
+unsubscribe(X,Y,[{qos,Z}]) -> unsubscribe_cli(X,[{Y,Z}]).
 
 subscribe_cli(ClientId, TopicTable) ->
     [ begin
