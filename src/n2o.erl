@@ -291,10 +291,21 @@ subscribe_cli(ClientId, TopicTable) ->
         emqttd_pubsub:add_subscriber(Topic,ClientId,[{qos,Qos}])
       end || {Topic,Qos} <- TopicTable ].
 
-unsubscribe_cli(ClientId, TopicTable) ->
-    [ begin
-        emqttd_pubsub:del_subscriber(Topic,ClientId,[{qos,Qos}])
-      end || {Topic,Qos} <- TopicTable ].
+
+unsubscribe_cli(ClientId, TopicTable)->
+    DelFun = fun() -> [ begin
+             mnesia:delete_object({mqtt_subscription, ClientId, Topic}),
+             kvs:delete(mqtt_subproperty, {Topic, ClientId}),
+             mnesia:delete_object({mqtt_subscriber, Topic, ClientId})
+            %emqttd_pubsub:del_subscriber(Topic,ClientId,[{qos,Qos}])
+            end || {Topic,Qos} <- TopicTable ] end,
+    case mnesia:is_transaction() of
+        true  -> DelFun();
+        false -> mnesia:transaction(DelFun)
+    end,
+    [(not ets:member(mqtt_subscriber, Topic)) andalso emqttd_router:del_route(Topic) || {Topic,Qos} <- TopicTable ].
+
+
 
 get_vnode(ClientId) ->
     [H|_] = binary_to_list(erlang:md5(ClientId)),
