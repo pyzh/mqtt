@@ -25,11 +25,17 @@
 
 <p>The <b>n2o</b> defines the way you create, configure and run
 arbitrary applications and protocols inside some hosts, into
-which N2O can be injected, such as <b>cowboy</b> and <b>emqttd</b>.
+which N2O can be injected, such as <b>cowboy</b> and <a href="http://github.com/synrc/emqttd">emqttd</a>.
 Each application can spawn its instance in its own way, like
 web pages spawn WebSocket connections, workflow engines
 spawn business proceseses and chat applications spawns roster
 and chatroom processes. With N2O everything is managed by protocols.</p>
+
+<p>N2O shipped to work in two modes: 1) inside cowboy processes;
+2) inside <a href="n2o_vnode.htm">n2o_vnode</a> workers. In second case
+MQTT server is used for transfering message between clients and server workers.
+In first case no more processes are being introduced except clients.
+You can create you own configuration of N2O processing loop.</p>
 
 <p><img src="WebSocket + MQTT.svg" width=100%></p>
 
