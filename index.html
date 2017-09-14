@@ -120,19 +120,17 @@
             session control replacement. We traded HEART protocol and session
             facilities for built-in MQTT features. N2O authentication and
             authorization mechanisms are also abandoned as MQTT could provide
-            AUTH features too. Obviously <b>wf:reg</b> and <b>wf:send</b> APIs
-            have also been abandoned as we can use emqttd API directly and
-            <b>{deliver,_}</b> protocol of ws_client gen_server.
+            AUTH features too.
         </p>
         <ul>
-            <li><b>n2o_session</b> &mdash; no Browser, so no Cookies are needed</li>
-            <li><b>n2o_stream</b> &mdash; no XHR fallback needed</li>
-            <li><b>n2o_heart</b> &mdash; no PING protocol needed</li>
-            <li><b>n2o_mq</b> &mdash; syn and gproc are no longer needed</li>
-            <li><b>n2o_query</b> &mdash; no Query Router</li>
-            <li><b>N2O_start</b> &mdash; replaced by MQTT_start</li>
-            <li><b>ranch</b> &mdash; replaced with esockd</li>
-            <li><b>cowboy</b> &mdash; replaced with mochiweb for WebSocket endpoint</li>
+            <li><b>n2o_session</b> &mdash; Server Cookies</li>
+            <li><b>n2o_stream</b> &mdash; XHR fallback</li>
+            <li><b>n2o_heart</b> &mdash; PING protocol</li>
+            <li><b>n2o_mq</b> &mdash; syn and gproc</li>
+            <li><b>n2o_query</b> &mdash; Query Router</li>
+            <li><b>N2O_start</b> &mdash; MQTT_start</li>
+            <li><b>ranch</b> &mdash; esockd</li>
+            <li><b>cowboy</b> &mdash; mochiweb</li>
         </ul>
     </section>
 
