@@ -13,14 +13,13 @@ check(#mqtt_client{client_id = ClientId,
                     client_pid = ClientPid,
                     ws_initial_headers = _Headers},
             _Password, _Listeners) ->
-  
     ClientId2 = case ClientId of <<>> -> get_client_id(); _ ->  ClientId end,
     case ClientId2 of
         <<"emqttd_", _/binary>> ->
             emqttd_client:subscribe(ClientPid,
                 [{iolist_to_binary(["actions/1/",PageModule,"/",ClientId2]), 2}]),
-            ok;
-        _ -> ok
+            ignore;
+        _ -> ignore
     end;
 check(_Client, _Password, _Opts) -> ignore.
 
