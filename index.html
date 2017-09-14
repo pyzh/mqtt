@@ -55,45 +55,6 @@
 </aside>
 <main>
     <section>
-        <a name=intro></a>
-        <h3>N2O as Communication Framework</h3>
-        <p>
-            N2O is an abstract processing loop of function with signature: Protocol -> IO,
-            where Protocol is a set of messages accepted by this function and result status IO
-            that could be continuation, JavaScript rendered code or binary data sent from server to client.
-            As being abstract it could be embedded into any netwotk server code, thus
-            is claiming to be communication framework. As communication framework
-            N2O supports different formatters (BERT/XML/JSON/TEXT), provides mechanism
-            for service development, cache, session and logging facilities. The core
-            features is limited to 25KB.
-        </p>
-        <p>
-            The main two usages of N2O:
-            1) live in client connection processes of server; 2) live in server workers
-            and handle all requests from client processes.
-        </p>
-        <figure>
-            <img src="man/WebSocket + MQTT.svg">
-            <figcaption>Schema. Live in Client processes or in Server Ring</figcaption>
-        </figure>
-    </section>
-    <section>
-        <h3>N2O Applications</h3>
-         <p>Writing applications for N2O means writing protocol implementation
-            modules and plug them to protocol loop. Luckily, N2O shipped with set of protocol
-            implementations, resembling all the best parts from other federations: XMPP/WS/CORBA.
-            If you need small, binary, compact and production-ready protocol
-            along with existed infrastructure and community &mdash; N2O is right page you are looking for.</p>
-        <figure>
-            <img src="https://n2o.space/img/mqtt.svg">
-            <figcaption>Picture 1. Protocol Modules</figcaption>
-        </figure>
-        <figure>
-            <img src="https://n2o.space/img/n2o-mq.png">
-            <figcaption>Picture 2. Protocol Messages</figcaption>
-        </figure>
-    </section>
-    <section>
 
         <h3>MQTT for Transport and Sesssions</h3>
         <p>
@@ -150,7 +111,7 @@
 
 
     <section>
-        <a name=""><h3>N2O things deprecated due to MQTT</h3></a>
+        <a name=""><h3>Differences from WebSocket</h3></a>
         <p>
             N2O_start and n2o.js are no longer used in MQTT version of N2O.
             Instead of N2O_start, MQTT_start and mqtt.js should be used for
@@ -171,10 +132,6 @@
             <li><b>ranch</b> &mdash; replaced with esockd</li>
             <li><b>cowboy</b> &mdash; replaced with mochiweb for WebSocket endpoint</li>
         </ul>
-        <p>
-        <img src="https://n2o.space/img/pdf.jpg" width=50/>
-        &nbsp; <a href="http://synrc.com/apps/n2o/doc/book.pdf">N2O.PDF</a>
-        </p>
     </section>
 
     <section>
