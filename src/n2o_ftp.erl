@@ -6,7 +6,7 @@
 -include_lib("kernel/include/file.hrl").
 -compile(export_all).
 
--define(ROOT, application:get_env(n2o,upload,code:priv_dir(n2o))).
+-define(ROOT, application:get_env(roster,upload,code:priv_dir(n2o))).
 -define(NEXT, 250*1024). % 256K chunks for best 25MB/s speed
 -define(STOP, 0).
 
