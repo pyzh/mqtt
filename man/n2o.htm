@@ -14,7 +14,7 @@
 
 <header>
     <a href="../index.html"><img src="https://n2o.space/img/Synrc Neo.svg"></a>
-    <h1>API</h1>
+    <h1>N2O</h1>
 </header>
 
 <main>
@@ -31,6 +31,8 @@ web pages spawn WebSocket connections, workflow engines
 spawn business proceseses and chat applications spawns roster
 and chatroom processes. With N2O everything is managed by protocols.</p>
 
+<center><img src="N2O.svg" width=60%></center>
+
 <p>N2O shipped to work in two modes: 1) inside cowboy processes, implemented in <a href="n2o_stream.htm">n2o_stream</a>
 2) inside <a href="n2o_vnode.htm">n2o_vnode</a> workers. In second case
 MQTT server is used for transfering message between clients and server workers.
@@ -43,6 +45,7 @@ You can create you own configuration of N2O processing loop.</p>
 it handles cache and session ETS tables along with flexible <a href="n2o_async.htm">n2o_async</a>
 processes with no ownership restriction. It also introduces logging
 approach, AES/CBC&mdash;128 pickling and BERT/JSON formatter.</p>
+
 
     </section>
     <section>
