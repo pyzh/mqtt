@@ -70,7 +70,7 @@ render_actions(Actions) ->
     First  = n2o:render(Actions),
     Second = n2o:render(n2o:actions()),
     n2o:actions([]),
-    [First,Second].
+    iolist_to_binary([First,Second]).
 
 % n2o events
 

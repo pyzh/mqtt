@@ -173,8 +173,9 @@ erroring(Class, Error) -> ?ERRORING:error_page(Class, Error).
 
 % Formatter
 
-format(Term) -> format(Term,application:get_env(n2o,formatter,bert)).
-format(Message, Formatter) -> n2o_format:format(Message, Formatter).
+-define(FORMAT, (application:get_env(n2o,formatter,n2o_bert))).
+
+format(Term) -> ?FORMAT:format(Term).
 
 % Cache facilities n2o:cache/[1,2,3]
 
@@ -270,7 +271,7 @@ error_page(Class,Error) ->
 
 
 -ifndef(SESSION).
--define(SESSION, n2o_session).
+-define(SESSION, (application:get_env(n2o,session,n2o_session))).
 -endif.
 
 session(Key)        -> #cx{session=SID}=get(context), ?SESSION:get_value(SID, Key, []).

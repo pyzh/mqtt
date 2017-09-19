@@ -44,17 +44,19 @@ proc({publish, To, Request},
     Addr   = emqttd_topic:words(To),
     Bert   = binary_to_term(Request,[safe]),
     Return = case Addr of
-         [ Origin, Vsn, Node, Module, Username, Id, Token | _ ] ->
-         From = nitro:to_binary(["actions/", Vsn, "/", Module, "/", Id]),
-         Sid  = nitro:to_binary(Token),
-         Ctx  = #cx { module=fix(Module), session=Sid, node=Node,
-                      params=Id, client_pid=C, from = From, vsn = Vsn},
-         put(context, Ctx),
-         case n2o_proto:info(Bert,[],Ctx) of
-              { reply, { binary, Response }, _ , #cx{from = From2}}
-                    -> { ok,    send(C, From2, Response)};
-              Reply -> { error, {"ERR: Invalid Return",Reply} } end;
-               Addr -> { error, {"ERR: Unknown Address",Addr} } end,
+        [ Origin, Vsn, Node, Module, Username, Id, Token | _ ] ->
+        From = nitro:to_binary(["actions/", Vsn, "/", Module, "/", Id]),
+        Sid  = nitro:to_binary(Token),
+        Ctx  = #cx { module=fix(Module), session=Sid, node=Node,
+                     params=Id, client_pid=C, from = From, vsn = Vsn},
+        put(context, Ctx),
+        case n2o_proto:info(Bert,[],Ctx) of
+             {reply,{binary,<<>>},               _,#cx{from=X}} -> skip;
+             {reply,{binary,<<131,106>>},        _,#cx{from=X}} -> skip;
+             {reply,{binary,<<131,109,0,0,0,0>>},_,#cx{from=X}} -> skip;
+             {reply,{binary,Resp},_,#cx{from=X}} -> {ok,send(C,X,Resp)};
+             Reply -> {error,{"Invalid Return",Reply}} end;
+              Addr -> {error,{"Unknown Address",Addr}} end,
     debug(Name,To,Bert,Addr,Return),
     {reply, Return, State#handler{seq=S+1}};
 
