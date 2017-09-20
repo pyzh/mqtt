@@ -42,4 +42,7 @@ websocket_terminate(_,R,S)   -> n2o_proto:terminate(R,S).
 ws({ok,R,S})                 -> {ok,R,S,hibernate};
 ws({shutdown,R,S})           -> {shutdown,R,S};
 ws({reply,{binary,Rep},R,S}) -> {reply,{binary,Rep},R,S,hibernate};
-ws({reply,Rep,R,S})          -> {reply,{text,Rep},R,S,hibernate}.
+ws({reply,{json,Rep},R,S})   -> {reply,{binary,n2o_json:format(Rep)},R,S,hibernate};
+ws({reply,{bert,Rep},R,S})   -> {reply,{binary,n2o_bert:format(Rep)},R,S,hibernate};
+ws({reply,{text,Rep},R,S})   -> {reply,{text,Rep},R,S,hibernate};
+ws({reply,{Format,Rep},R,S}) -> {reply,{binary,Format:format(Rep)},R,S,hibernate}.
