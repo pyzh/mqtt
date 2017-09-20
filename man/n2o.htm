@@ -59,7 +59,7 @@ approach, AES/CBC&mdash;128 pickling and BERT/JSON formatter.</p>
 </code></figure>
 
 <figure><figcaption>Listing 2. N2O Protocol</figcaption><code>
-   #reply { data  = [] :: [] | binary(),
+   #reply { data  = [] :: [] | { Formatter :: atom(), binary() },
             req   = [] :: [] | term(),
             state = [] :: [] | term() }.
 
@@ -150,7 +150,7 @@ and generate standart token stored in KVS.</p>
       {'Token', Token} = n2o_auth:gen_token([], Session),
       #cx{params = Client} = get(context),
       kvs:put(#'Token'{token = Token, client = Client}),
-      n2o_nitro:info({init, n2o:format(Token)}, Req, State);
+      n2o_nitro:info({init, Token}, Req, State);
 
  info(Message,Req,State) -> {unknown,Message,Req,State}.
 
@@ -166,7 +166,6 @@ and generate standart token stored in KVS.</p>
 <figure><code>
   [{n2o,[{cache,n2o},
          {mq,n2o},
-         {formatter,n2o_format},
          {logging,n2o_io},
          {log_modules,n2o},
          {log_level,n2o},
@@ -230,20 +229,27 @@ inflight srotarge once they become online.</p>
 
 <h3>FORMAT</h3>
 
-<p>Call this function for changeable at runtime socket binary formatting.
-   Used to format data field of the returned values in protocol implementations.
-   N2O provides selectable API through <b>formatter</b> environment parameter.</p>
+<p>You specify formatter in the <b>#reply/3</b> return from procotol.
+   N2O is shipped with two formatters: <b>{bert,_}</b> and <b>{json,_}</b>.
+   You can use <b>{binary,_}</b> for unformatted messages. For unhandled messages
+   protocol should return in #reply.data <b>{unknown,_}</b>.
 
-<h4>format(Message, bert | json) -> binary().</h4>
+<h4>format(Message) -> binary().</h4>
+
+<p>Here is example of formatter and its usage in <b>info/3</b> protocol implementation.</P>
 
 <figure><code>
- > io:format("~ts~n",[n2o:format(#io{},json)]).
- {"t":104,"v":[{"t":100,"v":"io"},{"t":109,"v":""},{"t":109,"v":[131,106]}]}
- ok
+ -module(ldap).
+ -inlcude("LDAP.hrl").
+ -export([format/1]).
 
- > n2o:format(#ok{code=undefined},bert).
- {binary,<<131,104,2,100,0,2,111,107,100,0,9,117,110,100,
-           101,102,105,110,101,100>>}
+ format(Term) -> element(2,'LDAP':encode(element(1,Term),Term)).
+
+ info(#'LDAPMessage', R, S) -> {reply, {ldap, M}, R, S}.
+ info(M, R, S)              -> {unknown, M, R, S}.
+
+ > ldap:format(#'LDAPMessage'{messageID=2,protocolOp={unbindRequest,3}})).
+ <<48,5,2,1,2,66,0>>
 
 </code></figure>
 
