@@ -24,7 +24,7 @@ info(#ftp{status={event,_}}=FTP, Req, State) ->
     Reply=try Module:event(FTP)
           catch E:R -> Error=n2o:stack(E,R),
                        io:format("Catch: ~p:~p~n~p",Error), Error end,
-    {reply,n2o:format({io,n2o_nitro:render_actions(n2o:actions()),Reply}),
+    {reply,{binary,n2o_bert:format({io,n2o_nitro:render_actions(n2o:actions()),Reply})},
            Req,State};
 
 info(#ftp{id=Link,status= <<"init">>,block=Block,offset=Offset}=FTP,Req,State) ->
@@ -44,7 +44,7 @@ info(#ftp{id=Link,status= <<"init">>,block=Block,offset=Offset}=FTP,Req,State) -
     n2o_async:stop(file,Link),
     n2o_async:start(#handler{module=?MODULE,class=file,group=n2o,state=FTP2,name=Link}),
 
-    {reply,n2o:format(FTP2),Req,State};
+    {reply,{binary,n2o_bert:format(FTP2)},Req,State};
 
 info(#ftp{id=Link,status= <<"send">>}=FTP,Req,State) ->
 %    io:format("Info Send: ~p",[FTP#ftp{data= <<>>}]),
@@ -52,11 +52,7 @@ info(#ftp{id=Link,status= <<"send">>}=FTP,Req,State) ->
         catch E:R -> skip, %io:format("Info Error call the sync: ~p~n",[{E,R}]),
             FTP#ftp{data= <<>>,block=?STOP} end,
 %    io:format("Send reply ~p",[Reply#ftp{data= <<>>}]),
-    {reply,n2o:format(Reply),Req,State};
-
-info(#ftp{status= <<"recv">>}=FTP,Req,State) -> {reply,n2o:format(FTP),Req,State};
-
-info(#ftp{status= <<"relay">>}=FTP,Req,State) -> {reply,n2o:format(FTP),Req, State};
+    {reply,{binary,n2o_bert:format(Reply)},Req,State};
 
 info(Message,Req,State) -> {unknown,Message,Req,State}.
 

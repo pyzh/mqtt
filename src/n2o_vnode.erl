@@ -51,10 +51,12 @@ proc({publish, To, Request},
                      params=Id, client_pid=C, from = From, vsn = Vsn},
         put(context, Ctx),
         case n2o_proto:info(Bert,[],Ctx) of
-             {reply,{binary,<<>>},               _,#cx{from=X}} -> skip;
-             {reply,{binary,<<131,106>>},        _,#cx{from=X}} -> skip;
-             {reply,{binary,<<131,109,0,0,0,0>>},_,#cx{from=X}} -> skip;
-             {reply,{binary,Resp},_,#cx{from=X}} -> {ok,send(C,X,Resp)};
+             {reply,{bert,  <<>>},_,#cx{from=X}} -> skip;
+             {reply,{json,  <<>>},_,#cx{from=X}} -> skip;
+             {reply,{binary,<<>>},_,#cx{from=X}} -> skip;
+             {reply,{bert,  Term},_,#cx{from=X}} -> {ok,send(C,X,n2o_bert:format(Term))};
+             {reply,{json,  Term},_,#cx{from=X}} -> {ok,send(C,X,n2o_json:format(Term))};
+             {reply,{binary,Term},_,#cx{from=X}} -> {ok,send(C,X,Term)};
              Reply -> {error,{"Invalid Return",Reply}} end;
               Addr -> {error,{"Unknown Address",Addr}} end,
     debug(Name,To,Bert,Addr,Return),

@@ -23,18 +23,15 @@ info({init, Token}, Req, State = #cx{module = Module, session = Session}) ->
              catch C:E -> Error = n2o:stack(C,E),
                           io:format("Event Init: ~p:~p~n~p~n",Error),
                           {stack,Error} end,
-             {reply,n2o:format({io,render_actions(n2o:actions()), {'Token', Token}}),
-                    Req,State};
-        {error,E} ->
-             {reply,n2o:format({io,<<>>,E}),
-                    Req,State} end;
+                     {reply, {bert,{io,render_actions(n2o:actions()), {'Token', Token}}},Req,State};
+        {error,E} -> {reply, {bert,{io,<<>>,E}},Req,State} end;
 
 info({client,Id,Topic,Message}=Client, Req, State) ->
     Module = State#cx.module,
     Reply = try Module:event(Client)
           catch E:R -> Error = n2o:stack(E,R),
                        io:format("Catch: ~p:~p~n~p",Error), Error end,
-    {reply,n2o:format({io,render_actions(n2o:actions()),<<>>}),Req,State};
+    {reply,{bert,{io,render_actions(n2o:actions()),<<>>}},Req,State};
 
 info({pickle,_,_,_}=Event, Req, State) ->
     n2o:actions([]),
@@ -42,9 +39,7 @@ info({pickle,_,_,_}=Event, Req, State) ->
            catch E:R -> Stack = n2o:stack(E,R),
                         io:format("Catch: ~p:~p~n~p", Stack),
                         {io,render_actions(n2o:actions()),Stack} end,
-
-    {reply,n2o:format(Result),
-           Req,State};
+    {reply,{bert,Result}, Req,State};
 
 info({flush,Actions}, Req, State) ->
     n2o:actions([]),
