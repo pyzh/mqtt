@@ -50,14 +50,18 @@ proc({publish, To, Request},
         Ctx  = #cx { module=fix(Module), session=Sid, node=Node,
                      params=Id, client_pid=C, from = From, vsn = Vsn},
         put(context, Ctx),
-        case n2o_proto:info(Bert,[],Ctx) of
-             {reply,{_, <<>>},_,_} -> skip;
-             {reply,{bert,  Term},_,#cx{from=X}}    -> {ok,send(C,X,n2o_bert:format(Term))};
-             {reply,{json,  Term},_,#cx{from=X}}    -> {ok,send(C,X,n2o_json:format(Term))};
-             {reply,{binary,Term},_,#cx{from=X}}    -> {ok,send(C,X,Term)};
-             {reply,{Formatter,Term},_,#cx{from=X}} -> {ok,send(C,X,Formatter:format(Term))};
-             Reply -> {error,{"Invalid Return",Reply}} end;
-              Addr -> {error,{"Unknown Address",Addr}} end,
+        try case n2o_proto:info(Bert,[],Ctx) of
+                 {reply,{_, <<>>},_,_} -> skip;
+                 {reply,{bert,  Term},_,#cx{from=X}}    -> {ok,send(C,X,n2o_bert:format(Term))};
+                 {reply,{json,  Term},_,#cx{from=X}}    -> {ok,send(C,X,n2o_json:format(Term))};
+                 {reply,{binary,Term},_,#cx{from=X}}    -> {ok,send(C,X,Term)};
+                 {reply,{Formatter,Term},_,#cx{from=X}} -> {ok,send(C,X,Formatter:format(Term))};
+                                                  Reply -> {error,{"Invalid Return",Reply}}
+            end
+        catch Err:Rea ->
+            n2o:error(?MODULE,"Catch:~p~n",[n2o:stack_trace(Err,Rea)])
+        end;
+        Addr -> {error,{"Unknown Address",Addr}} end,
     debug(Name,To,Bert,Addr,Return),
     {reply, Return, State#handler{seq=S+1}};
 
