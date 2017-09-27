@@ -109,12 +109,11 @@ on_message_publish(Message = #mqtt_message{topic = <<"actions/",
                    from=From}, _Env) ->
     {ok, Message};
 
-on_message_publish(#mqtt_message{topic = <<"events/",Vsn,"//",RestTopic/binary>>, qos=Qos,
+on_message_publish(#mqtt_message{topic = <<"events/",Vsn,"//",RestTopic/binary>> = Topic, qos=Qos,
                    from={ClientId,_},payload = Payload}, _Env) ->
     {M,F} = application:get_env(?MODULE, vnode, {?MODULE, get_vnode}),
-    emqttd:publish(emqttd_message:make(ClientId, Qos,
-        iolist_to_binary(["events/",Vsn,"/",M:F({ClientId, Payload}),"/",RestTopic]), Payload)),
-    stop;
+    VNode = M:F(ClientId, Payload), NewTopic = iolist_to_binary(["events/",Vsn,"/",VNode,"/",RestTopic]),
+    emqttd:publish(emqttd_message:make(ClientId, Qos, NewTopic, Payload)), stop;
 
 on_message_publish(Message = #mqtt_message{topic = <<"events/",
                    _RestTopic/binary>>,
@@ -308,8 +307,8 @@ unsubscribe_cli(ClientId, TopicTable)->
     [(not ets:member(mqtt_subscriber, Topic)) andalso emqttd_router:del_route(Topic) || {Topic,Qos} <- TopicTable ].
 
 
-
-get_vnode({ClientId, _}) ->
+get_vnode(ClientId) -> get_vnode(ClientId, []).
+get_vnode(ClientId, _) ->
     [H|_] = binary_to_list(erlang:md5(ClientId)),
     integer_to_binary(H rem ring_max() + 1).
 
