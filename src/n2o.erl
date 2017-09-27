@@ -111,8 +111,9 @@ on_message_publish(Message = #mqtt_message{topic = <<"actions/",
 
 on_message_publish(#mqtt_message{topic = <<"events/",Vsn,"//",RestTopic/binary>>, qos=Qos,
                    from={ClientId,_},payload = Payload}, _Env) ->
+    {M,F} = application:get_env(?MODULE, vnode, {?MODULE, get_vnode}),
     emqttd:publish(emqttd_message:make(ClientId, Qos,
-        iolist_to_binary(["events/",Vsn,"/",get_vnode(ClientId),"/",RestTopic]), Payload)),
+        iolist_to_binary(["events/",Vsn,"/",M:F({ClientId, Payload}),"/",RestTopic]), Payload)),
     stop;
 
 on_message_publish(Message = #mqtt_message{topic = <<"events/",
@@ -308,7 +309,7 @@ unsubscribe_cli(ClientId, TopicTable)->
 
 
 
-get_vnode(ClientId) ->
+get_vnode({ClientId, _}) ->
     [H|_] = binary_to_list(erlang:md5(ClientId)),
     integer_to_binary(H rem ring_max() + 1).
 
@@ -347,4 +348,3 @@ warning(        String      ) -> log(?MODULE, String, [],   warning).
 error(Module, String, Args) -> log(Module,  String, Args, error).
 error(        String, Args) -> log(?MODULE, String, Args, error).
 error(        String)       -> log(?MODULE, String, [],   error).
-
