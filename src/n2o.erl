@@ -109,16 +109,25 @@ on_message_publish(Message = #mqtt_message{topic = <<"actions/",
                    from=From}, _Env) ->
     {ok, Message};
 
-on_message_publish(#mqtt_message{topic = <<"events/",Vsn,"//",RestTopic/binary>> = Topic, qos=Qos,
-                   from={ClientId,_},payload = Payload}, _Env) ->
+on_message_publish(#mqtt_message{topic = <<"events/",Vsn,"//",TopicTail/binary>>, qos=Qos,
+    from={ClientId,_},payload = Payload}, _Env) ->
     {M,F} = application:get_env(?MODULE, vnode, {?MODULE, get_vnode}),
-    VNode = M:F(ClientId, Payload), NewTopic = iolist_to_binary(["events/",Vsn,"/",VNode,"/",RestTopic]),
+    VNode = M:F(ClientId, Payload), NewTopic = iolist_to_binary(["events/",Vsn,"/",VNode,"/",TopicTail]),
     emqttd:publish(emqttd_message:make(ClientId, Qos, NewTopic, Payload)), stop;
 
-on_message_publish(Message = #mqtt_message{topic = <<"events/",
-                   _RestTopic/binary>>,
+on_message_publish(#mqtt_message{topic = <<"events/",Vsn,"/", VNode,"/",TopicTail>>, qos=Qos,
+    from={ClientId,_},payload = Payload}=Message, _Env) ->
+    case emqttd_topic:words(TopicTail) of
+        [_Module, _Username, ClientId, _Token ]-> {ok, Message};
+        [Module, Username, ClientId2, Token ] ->
+            NewTopic = nitro:to_binary(["events/", Vsn,"/", VNode,"/", Module, "/", Username, "/", ClientId, "/", Token ]),
+            emqttd:publish(emqttd_message:make(ClientId, Qos, NewTopic, Payload)), stop; %% NOTE redirects to correct ClientId
+        _ -> {ok, Message} end;
+
+on_message_publish(Message = #mqtt_message{topic = <<"events/",Vsn,"/",VNode,"/", Api, "/", Name_RestTopic/binary>> = Topic,
                    from={ClientId,_Undefined},
                    payload = Payload}, _Env) ->
+
     {ok, Message};
 
 on_message_publish(Message, _) ->
