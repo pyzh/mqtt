@@ -205,7 +205,7 @@ till(Now,TTL) ->
 -endif.
 
 opt()      -> [ set, named_table, { keypos, 1 }, public ].
-tables()   -> [ cookies, file, caching, ring, async ].
+tables()   -> application:get_env(n2o,tables,[ cookies, file, caching, ring, async ]).
 storage_init()   -> [ ets:new(X,opt()) || X <- tables() ].
 cache(Tab, Key, undefined)   -> ets:delete(Tab,Key);
 cache(Tab, Key, Value)       -> ets:insert(Tab,{Key,till(calendar:local_time(), ttl()),Value}), Value.
