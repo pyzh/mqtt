@@ -23,9 +23,10 @@ check(#mqtt_client{client_id = ClientId,
     end;
 check(_Client, _Password, _Opts) -> ignore.
 
+ttl() -> (application:get_env(n2o, auth_ttl, 60*15)).
 gen_token([], Data) ->
     Now = now_msec(),
-    Expiration = Now+application:get_env(n2o,ttl,60*15)*1000,
+    Expiration = Now+ttl()*1000,
     {'Token', n2o_secret:pickle(term_to_binary(Expiration))};
 gen_token(ClientSessionToken, Data) ->
     Now = now_msec(),
