@@ -1,8 +1,8 @@
 var match, pl = /\+/g, search = /([^&=]+)=?([^&]*)/g,
-    decode = function (s) { return decodeURIComponent(s.replace(pl, " ")); },
+    decode_uri = function (s) { return decodeURIComponent(s.replace(pl, " ")); },
     query = window.location.search.substring(1),
     nodes = 4,
-    params = {}; while (match = search.exec(query)) params[decode(match[1])] = decode(match[2]);
+    params = {}; while (match = search.exec(query)) params[decode_uri(match[1])] = decode_uri(match[2]);
 var l = location.pathname,
     x = l.substring(l.lastIndexOf("/") + 1),
     ll = x.lastIndexOf("."),
