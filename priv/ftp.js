@@ -50,7 +50,7 @@ var ftp = {
         this.reader = new FileReader();
         this.reader.onloadend = function (e) {
             var res = e.target, data = e.target.result;
-            if (res.readyState === FileReader.DONE && data.byteLength > 0) {
+            if (res.readyState === FileReader.DONE && data.byteLength >= 0) {
                 console.log(item);
                 ftp.send(item, data);
             }
