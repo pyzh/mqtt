@@ -33,11 +33,11 @@ gen_name(Pos) -> iolist_to_binary([lists:flatten([io_lib:format("~2.16.0b",[X])
 proc(init,#handler{name=Name}=Async) ->
     io:format("VNode Init: ~p\r~n",[Name]),
     {ok, C} = emqttc:start_link([{host, roster:node_ip()},
-                                 {client_id, Nn=gen_name(Name)},
+                                 {client_id, Name},
                                  {clean_sess, false},
                                  {logger, {console, error}},
                                  {reconnect, 5}]),
-    {ok,Async#handler{state=C, name=Nn, seq=0}};
+    {ok,Async#handler{state=C, seq=0}};
 
 proc({publish, To, Request},
     State  = #handler{name=Name,state=C,seq=S}) ->
