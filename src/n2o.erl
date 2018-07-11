@@ -133,7 +133,7 @@ on_message_acked(ClientId, _Username, Message, _Env) ->
 
 unload() ->
     emqttd:unhook('client.connected',     fun ?MODULE:on_client_connected/3),
-    emqttd:unhook('client.disconnected',  fun ?MODULE:on_client_disconnected/3),
+%    emqttd:unhook('client.disconnected',  fun ?MODULE:on_client_disconnected/3),
     emqttd:unhook('client.subscribe',     fun ?MODULE:on_client_subscribe/4),
     emqttd:unhook('client.unsubscribe',   fun ?MODULE:on_client_unsubscribe/4),
     emqttd:unhook('session.subscribed',   fun ?MODULE:on_session_subscribed/4),

@@ -4,6 +4,7 @@
 -description('N2O Remote: Virtual Node Server').
 -author('Maxim Sokhatsky').
 -include("n2o.hrl").
+-include_lib("emqttd/include/emqttd.hrl").
 -compile(export_all).
 
 % N2O VNODE SERVER for MQTT
@@ -37,6 +38,8 @@ proc(init,#handler{name=Name}=Async) ->
                                  {clean_sess, false},
                                  {logger, {console, error}},
                                  {reconnect, 5}]),
+    [ emqttd_router:add_route(#mqtt_route{topic = Topic, node = node()}) ||
+        #mqtt_subscription{value=Topic} <- ets:lookup(mqtt_subscription, Name)],
     {ok,Async#handler{state=C, seq=0}};
 
 proc({publish, To, Request},
