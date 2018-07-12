@@ -38,8 +38,6 @@ proc(init,#handler{name=Name}=Async) ->
                                  {clean_sess, false},
                                  {logger, {console, error}},
                                  {reconnect, 5}]),
-    [ emqttd_router:add_route(#mqtt_route{topic = Topic, node = node()}) ||
-        #mqtt_subscription{value=Topic} <- ets:lookup(mqtt_subscription, Name)],
     {ok,Async#handler{state=C, seq=0}};
 
 proc({publish, To, Request},
@@ -69,7 +67,11 @@ proc({publish, To, Request},
     {reply, Return, State#handler{seq=S+1}};
 
 proc({mqttc, C, connected}, State=#handler{name=Name,state=C,seq=S}) ->
-    emqttc:subscribe(C, nitro:to_binary([<<"events/+/">>, nitro:to_list(Name),"/#"]), 2),
+    case ets:lookup(mqtt_subscription, Name) of
+              [] -> emqttc:subscribe(C, nitro:to_binary([<<"events/+/">>, nitro:to_list(Name),"/#"]), 2);
+              _  -> [ emqttd_router:add_route(#mqtt_route{topic = Topic, node = node()}) ||
+                                 #mqtt_subscription{value=Topic} <- ets:lookup(mqtt_subscription, Name)]
+    end,
     {ok, State#handler{seq = S+1}};
 
 proc(Unknown,#handler{state=C,name=Name,seq=S}=Async) ->
