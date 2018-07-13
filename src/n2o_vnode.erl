@@ -68,9 +68,9 @@ proc({publish, To, Request},
 
 proc({mqttc, C, connected}, State=#handler{name=Name,state=C,seq=S}) ->
     case ets:lookup(mqtt_subscription, Name) of
-              [] -> emqttc:subscribe(C, nitro:to_binary([<<"events/+/">>, nitro:to_list(Name),"/#"]), 2);
-              _  -> [ emqttd_router:add_route(#mqtt_route{topic = Topic, node = node()}) ||
-                                 #mqtt_subscription{value=Topic} <- ets:lookup(mqtt_subscription, Name)]
+              [_|_]=L -> [ emqttd_router:add_route(#mqtt_route{topic = Topic, node = node()}) ||
+                                #mqtt_subscription{value=Topic} <- L];
+                _    -> emqttc:subscribe(C, nitro:to_binary([<<"events/+/">>, nitro:to_list(Name),"/#"]), 2)
     end,
     {ok, State#handler{seq = S+1}};
 
