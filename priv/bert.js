@@ -24,9 +24,32 @@ function bin(o) {
       new Uint8Array(o) : o instanceof Uint8Array ? o : utf8_toByteArray(o).v
   };
 }
+
+function int_to_bytes(Int) {
+  var isNegative, OriginalInt, i, Rem, s = [];
+  isNegative = (Int < 0);
+  if (isNegative) { Int = - Int - 1; }
+  OriginalInt = Int;
+  var length = 0;
+  while (Int !== 0) { Rem = Int % 256;
+    if (isNegative) { Rem = 255 - Rem; }
+    s.push(Rem); Int = Math.floor(Int / 256); length++; }
+  s.unshift(isNegative ? 1 : 0);
+  s.unshift(length);
+  if (Int > 0) { throw ("Argument out of range: " + OriginalInt); }
+  return s;
+};
+
+function number(Obj) {
+  var s, isInteger = (Obj % 1 === 0);
+  if (isInteger && Obj >= 0 && Obj < 256) { return { t: 97, v: Obj };  }
+  if (isInteger && Obj >= -134217728 && Obj <= 134217727) { return {t: 98, v: toBytesInt32(Obj)}; }
+  if (Number.isSafeInteger(Obj)) { return {t: 110, v: int_to_bytes(Obj)}; } else {
+     throw ("Need to impelement bigInt: " + Obj); } }
+
 function tuple() { return { t: 104, v: Array.apply(null, arguments) }; }
 function list() { return { t: 108, v: Array.apply(null, arguments) }; }
-function number(o) { return { t: 98, v: o }; }
+// function number(o) { return { t: 98, v: o }; }
 function enc(o) { return fl([131, ein(o)]); }
 function ein(o) { return Array.isArray(o) ? en_108({ t: 108, v: o }) : eval('en_' + o.t)(o); }
 function en_undefined(o) { return [106]; }
