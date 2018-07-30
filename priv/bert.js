@@ -34,8 +34,6 @@ function int_to_bytes(Int) {
   while (Int !== 0) { Rem = Int % 256;
     if (isNegative) { Rem = 255 - Rem; }
     s.push(Rem); Int = Math.floor(Int / 256); length++; }
-  s.unshift(isNegative ? 1 : 0);
-  s.unshift(length);
   if (Int > 0) { throw ("Argument out of range: " + OriginalInt); }
   return s;
 };
@@ -43,13 +41,12 @@ function int_to_bytes(Int) {
 function number(Obj) {
   var s, isInteger = (Obj % 1 === 0);
   if (isInteger && Obj >= 0 && Obj < 256) { return { t: 97, v: Obj };  }
-  if (isInteger && Obj >= -134217728 && Obj <= 134217727) { return {t: 98, v: toBytesInt32(Obj)}; }
-  if (Number.isSafeInteger(Obj)) { return {t: 110, v: int_to_bytes(Obj)}; } else {
+  if (isInteger && Obj >= -134217728 && Obj <= 134217727) { return {t: 98, v: Obj}; }
+  if (Number.isSafeInteger(Obj)) { return {t: 110, v: Obj}; } else {
      throw ("Need to impelement bigInt: " + Obj); } }
 
 function tuple() { return { t: 104, v: Array.apply(null, arguments) }; }
 function list() { return { t: 108, v: Array.apply(null, arguments) }; }
-// function number(o) { return { t: 98, v: o }; }
 function enc(o) { return fl([131, ein(o)]); }
 function ein(o) { return Array.isArray(o) ? en_108({ t: 108, v: o }) : eval('en_' + o.t)(o); }
 function en_undefined(o) { return [106]; }
@@ -70,6 +67,7 @@ function en_108(o) {
   var l = o.v.length, r = []; for (var i = 0; i < l; i++)r.push(ein(o.v[i]));
   return o.v.length == 0 ? [106] : [108, l >>> 24, (l >>> 16) & 255, (l >>> 8) & 255, l & 255, r, 106];
 }
+function en_110(o) { var s=int_to_bytes(o.v); return [110,s.length,(o.v<0)?1:0,...s]; }
 
 // BERT Decoder
 
