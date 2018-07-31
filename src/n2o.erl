@@ -16,13 +16,13 @@
 
 load(Env) ->
     emqttd:hook('client.connected',    fun ?MODULE:on_client_connected/3,     [Env]),
-    emqttd:hook('client.disconnected', fun ?MODULE:on_client_disconnected/3,  [Env]),
+ %   emqttd:hook('client.disconnected', fun ?MODULE:on_client_disconnected/3,  [Env]),
     emqttd:hook('client.subscribe',    fun ?MODULE:on_client_subscribe/4,     [Env]),
     emqttd:hook('client.unsubscribe',  fun ?MODULE:on_client_unsubscribe/4,   [Env]),
     emqttd:hook('session.created',     fun ?MODULE:on_session_created/3,      [Env]),
     emqttd:hook('session.subscribed',  fun ?MODULE:on_session_subscribed/4,   [Env]),
     emqttd:hook('session.unsubscribed',fun ?MODULE:on_session_unsubscribed/4, [Env]),
-    emqttd:hook('session.terminated',  fun ?MODULE:on_session_terminated/4,   [Env]),
+%    emqttd:hook('session.terminated',  fun ?MODULE:on_session_terminated/4,   [Env]),
     emqttd:hook('message.publish',     fun ?MODULE:on_message_publish/2,      [Env]),
     emqttd:hook('message.delivered',   fun ?MODULE:on_message_delivered/4,    [Env]),
     emqttd:hook('message.acked',       fun ?MODULE:on_message_acked/4,        [Env]).
@@ -30,7 +30,7 @@ load(Env) ->
 stop(_)    -> unload(), ok.
 start(_,_) -> catch load([]), X = supervisor:start_link({local,n2o},n2o, []),
               n2o_async:start(#handler{module=?MODULE,class=caching,group=n2o,state=[],name="timer"}),
-              [ n2o_async:start(#handler{module=n2o_vnode,class=ring,group=n2o,state=[],name=Pos})
+              [ n2o_async:start(#handler{module=n2o_vnode,class=ring,group=n2o,state=[],name=n2o_vnode:gen_name(Pos)})
                 || {{Name,Nodes},Pos} <- lists:zip(ring(),lists:seq(1,length(ring()))) ],
                 X.
 ring()     -> n2o_ring:ring_list().
@@ -133,7 +133,7 @@ on_message_acked(ClientId, _Username, Message, _Env) ->
 
 unload() ->
     emqttd:unhook('client.connected',     fun ?MODULE:on_client_connected/3),
-    emqttd:unhook('client.disconnected',  fun ?MODULE:on_client_disconnected/3),
+%    emqttd:unhook('client.disconnected',  fun ?MODULE:on_client_disconnected/3),
     emqttd:unhook('client.subscribe',     fun ?MODULE:on_client_subscribe/4),
     emqttd:unhook('client.unsubscribe',   fun ?MODULE:on_client_unsubscribe/4),
     emqttd:unhook('session.subscribed',   fun ?MODULE:on_session_subscribed/4),
@@ -304,7 +304,7 @@ unsubscribe_cli(ClientId, TopicTable)->
         true  -> DelFun();
         false -> mnesia:transaction(DelFun)
     end,
-    [(not ets:member(mqtt_subscriber, Topic)) andalso emqttd_router:del_route(Topic) || {Topic,Qos} <- TopicTable ].
+    [(not ets:member(mqtt_subscriber, Topic)) andalso [emqttd_router:del_route(Route)|| Route<-mnesia:dirty_read({mqtt_route, Topic})] || {Topic,Qos} <- TopicTable ].
 
 
 get_vnode(ClientId) -> get_vnode(ClientId, []).
