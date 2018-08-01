@@ -94,12 +94,17 @@ function run(b) {
   var sz = (b == 1 ? sx.getUint8(ix) : sx.getUint32(ix)), r = []; ix += b;
   for (var i = 0; i < sz; i++) r.push(din()); if (b == 4) ix++; return r;
 };
+
+function arr(b) {
+  var dv, sz = sx.getUint16(ix); ix += b; return new Uint8Array(sx.buffer.slice(ix, ix += sz));
+};
+
 function din() {
   var c = sx.getUint8(ix++), x; switch (c) {
     case 97: x = [int, 1]; break;
     case 98: x = [int, 4]; break; case 100: x = [str, 2]; break;
     case 110: x = [big, 1]; break; case 111: x = [big, 4]; break;
-    case 104: x = [run, 1]; break; case 107: x = [str, 2]; break;
+    case 104: x = [run, 1]; break; case 107: x = [arr, 2]; break;
     case 108: x = [run, 4]; break; case 109: x = [str, 4]; break;
     default: x = [nop, 0];
   } return { t: c, v: x[0](x[1]) };
