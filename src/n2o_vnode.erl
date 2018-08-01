@@ -31,11 +31,9 @@ gen_name(Pos) when is_integer(Pos) -> gen_name(integer_to_list(Pos));
 gen_name(Pos) -> iolist_to_binary([lists:flatten([io_lib:format("~2.16.0b",[X])
               || <<X:8>> <= list_to_binary(atom_to_list(node())++"_"++Pos)])]).
 
-node_ip()->[H|[T]]=string:split(atom_to_list(node()),"@"),T.
-
 proc(init,#handler{name=Name}=Async) ->
     io:format("VNode Init: ~p\r~n",[Name]),
-    {ok, C} = emqttc:start_link([{host, node_ip()},
+    {ok, C} = emqttc:start_link([{host, roster:node_ip()},
                                  {client_id, Name},
                                  {clean_sess, false},
                                  {logger, {console, error}},
