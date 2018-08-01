@@ -4,7 +4,6 @@
 -description('N2O Remote: Virtual Node Server').
 -author('Maxim Sokhatsky').
 -include("n2o.hrl").
--include_lib("emqttd/include/emqttd.hrl").
 -compile(export_all).
 
 % N2O VNODE SERVER for MQTT
@@ -31,16 +30,14 @@ gen_name(Pos) when is_integer(Pos) -> gen_name(integer_to_list(Pos));
 gen_name(Pos) -> iolist_to_binary([lists:flatten([io_lib:format("~2.16.0b",[X])
               || <<X:8>> <= list_to_binary(atom_to_list(node())++"_"++Pos)])]).
 
-node_ip()->[H|[T]]=string:split(atom_to_list(node()),"@"),T.
-
 proc(init,#handler{name=Name}=Async) ->
     io:format("VNode Init: ~p\r~n",[Name]),
-    {ok, C} = emqttc:start_link([{host, node_ip()},
-                                 {client_id, Name},
+    {ok, C} = emqttc:start_link([{host, "127.0.0.1"},
+                                 {client_id, gen_name(Name)},
                                  {clean_sess, false},
                                  {logger, {console, error}},
                                  {reconnect, 5}]),
-    {ok,Async#handler{state=C, seq=0}};
+    {ok,Async#handler{state=C,seq=0}};
 
 proc({publish, To, Request},
     State  = #handler{name=Name,state=C,seq=S}) ->
@@ -69,11 +66,7 @@ proc({publish, To, Request},
     {reply, Return, State#handler{seq=S+1}};
 
 proc({mqttc, C, connected}, State=#handler{name=Name,state=C,seq=S}) ->
-    case ets:lookup(mqtt_subscription, Name) of
-              [_|_]=L -> [ emqttd_router:add_route(#mqtt_route{topic = Topic, node = node()}) ||
-                                #mqtt_subscription{value=Topic} <- L];
-                _    -> emqttc:subscribe(C, nitro:to_binary([<<"events/+/">>, nitro:to_list(Name),"/#"]), 2)
-    end,
+    emqttc:subscribe(C, nitro:to_binary([<<"events/+/">>, nitro:to_list(Name),"/#"]), 2),
     {ok, State#handler{seq = S+1}};
 
 proc(Unknown,#handler{state=C,name=Name,seq=S}=Async) ->
